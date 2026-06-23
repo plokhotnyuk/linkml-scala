@@ -1,0 +1,3 @@
+@prefix : <https://neverblink.eu/linkml/tests/explicitInline/> .
+
+_:b a :SomeClass .

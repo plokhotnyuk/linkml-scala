@@ -1,0 +1,4 @@
+[submodule "submodules/linkml-model"]
+	path = submodules/linkml-model
+	url = https://github.com/plokhotnyuk/linkml-model.git
+	commit = df58102f1f53c847843964cff3a052666f91b9bd

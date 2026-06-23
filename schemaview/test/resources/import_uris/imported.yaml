@@ -1,0 +1,30 @@
+id: imported
+name: imported
+prefixes:
+  imported: https://neverblink.eu/imported#
+default_prefix: imported
+default_range: integer
+classes:
+  imported_class:
+    description: This is an imported class
+    slots:
+      - imported_slot
+      - slot_to_be_specialized
+    attributes:
+      attribute_to_leave_unchanged:
+        description: This attribute is not specialized by the subclass with slot_usage.
+      attribute_to_be_specialized:
+        description: This attribute is specialized by the subclass with slot_usage.
+slots:
+  imported_slot:
+    description: This is an imported slot
+  slot_to_be_specialized:
+    description: This slot is specialized by the subclass with slot_usage.
+  slot_to_be_used:
+    description: This slot is used by the subclass with slots. It's not present in the base class.
+types:
+  imported_type:
+    description: This is an imported type
+enums:
+  imported_enum:
+    description: This is an imported enum

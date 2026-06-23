@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/uri/> .
+@prefix ex: <http://example.org/> .
+
+ex:some_value a :SomeOtherClass;
+  :id ex:some_value .

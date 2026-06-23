@@ -1,0 +1,26 @@
+id: https://neverblink.eu/linkml/tests/implicitInlineAsSimpleDict/
+name: implicitInlineAsSimpleDict
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    attributes:
+      id:
+        # key is not an identifier - it can be used as a dict key, but not as a reference value
+        key: true
+      other_slot:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    range: SomeOtherClass
+    multivalued: true

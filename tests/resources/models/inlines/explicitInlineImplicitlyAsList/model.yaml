@@ -1,0 +1,24 @@
+id: https://neverblink.eu/linkml/tests/explicitInlineImplicitlyAsList/
+name: explicitInlineImplicitlyAsList
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    attributes:
+      other_slot:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    range: SomeOtherClass
+    multivalued: true
+    inlined: true

@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/uriOrCurie/> .
+@prefix ex: <http://example.org/> .
+
+_:b1 a :SomeClass;
+  :some_other_slot ex:some_value .

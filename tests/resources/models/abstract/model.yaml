@@ -1,0 +1,24 @@
+id: https://neverblink.eu/linkml/tests/abstract/
+name: abstract
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    abstract: true
+    slots:
+      - some_slot
+      - some_other_slot
+slots:
+  some_slot:
+    range: string
+  some_other_slot:
+    range: integer
+    required: true

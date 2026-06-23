@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/explicitInlineImplicitlyAsList/> .
+
+_:b a :SomeClass;
+  :some_slot [
+     a :SomeOtherClass;
+     :other_slot "123"
+   ] .

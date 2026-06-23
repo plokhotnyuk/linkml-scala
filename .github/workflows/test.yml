@@ -1,0 +1,50 @@
+name: Build & test
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        include:
+          - os: blacksmith-4vcpu-ubuntu-2404
+            java: 17
+          - os: blacksmith-4vcpu-ubuntu-2404
+            java: 25
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:${{ matrix.java }}
+          apps: mill
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build and test
+        run: |
+          ./mill --no-server -j 0 __.test

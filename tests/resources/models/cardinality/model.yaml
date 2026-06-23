@@ -1,0 +1,34 @@
+id: https://neverblink.eu/linkml/tests/cardinality/
+name: cardinality
+imports:
+  - linkml:types
+prefixes:
+  schema: http://schema.org/
+  linkml: https://w3id.org/linkml/
+
+classes:
+  Cardinal:
+    tree_root: true
+    slots:
+      - one
+      - atMostOne
+      - atLeastOne
+      - zeroOrMore
+
+slots:
+  one:
+    range: string
+    required: true
+    multivalued: false
+  atMostOne:
+    range: string
+    required: false
+    multivalued: false
+  atLeastOne:
+    range: string
+    required: true
+    multivalued: true
+  zeroOrMore:
+    range: string
+    required: false
+    multivalued: true

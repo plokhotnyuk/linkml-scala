@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/explicitInline/> .
+
+_:b a :SomeClass;
+  :some_slot [
+    a :SomeOtherClass;
+    :some_other_slot 1
+  ] .

@@ -1,0 +1,33 @@
+id: https://neverblink.eu/linkml/tests/basic2/
+name: basic2
+comments:
+  - The two classes here are not linked with each other
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+instantiates:
+  - https://neverblink.eu/linkml/tests/Metadata
+extensions:
+  derivedEquals: basic
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    slots:
+      - some_slot
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+      - some_other_slot
+slots:
+  some_slot:
+    range: string
+  some_other_slot:
+    range: integer
+    required: true

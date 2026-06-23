@@ -1,0 +1,30 @@
+id: main
+name: main
+prefixes:
+  main: https://neverblink.eu/main#
+  linkml: https://w3id.org/linkml/
+default_prefix: main
+imports:
+  - linkml:types
+  - imported
+default_range: double
+classes:
+  main_class:
+    is_a: imported_class
+    description: This is a main class
+    slot_usage:
+      slot_to_be_specialized:
+        required: true
+      attribute_to_be_specialized:
+        required: true
+    slots:
+      - slot_to_be_used
+slots:
+  main_slot:
+    description: This is a main slot
+types:
+  main_type:
+    description: This is a main type
+enums:
+  main_enum:
+    description: This is a main enum

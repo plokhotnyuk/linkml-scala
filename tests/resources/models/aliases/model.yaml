@@ -1,0 +1,19 @@
+id: https://neverblink.eu/linkml/tests/aliases/
+name: aliases
+prefixes:
+  linkml: https://w3id.org/linkml/
+  aliases: https://neverblink.eu/linkml/tests/aliases/
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    tree_root: true
+    alias: AliasedClass
+    class_uri: aliases:UriClass
+    attributes:
+      some_slot:
+        alias: aliased_slot
+      some_other_slot:
+        slot_uri: aliases:uri_slot

@@ -1,0 +1,398 @@
+package eu.neverblink.linkml.yaml
+
+import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
+import org.scalacheck.Arbitrary.arbitrary
+import org.scalatest.exceptions.TestFailedException
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import org.virtuslab.yaml.*
+import scala.annotation.nowarn
+
+class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
+  "LinkmlYamlCodec" should {
+    "decode and encode strings" in {
+      implicit val codec: LinkmlYamlCodec[String] = LinkmlYamlCodec.derived
+      roundTrip("abc", "abc\n")
+      roundTrip("Привіт", "Привіт\n")
+      roundTrip("★🎸🎧⋆｡°⋆", "★🎸🎧⋆｡°⋆\n")
+      decodeError[String]("true\n", "Cannot decode java.lang.String from: true")
+      decodeError[String]("a: abc\n", "Cannot decode java.lang.String from: a: abc")
+      decodeError[String]("- abc\n", "Cannot decode java.lang.String from: - abc")
+      decodeError[String]("!!null\n", "Cannot decode java.lang.String from: !!null")
+    }
+    "decode and encode ints" in {
+      implicit val codec: LinkmlYamlCodec[Int] = LinkmlYamlCodec.derived
+      forAll(arbitrary[Int])(x => roundTrip(x, s"$x\n"))
+      decodeError[Int]("1.23\n", "Cannot decode scala.Int from: 1.23")
+      decodeError[Int]("a: 123\n", "Cannot decode scala.Int from: a: 123")
+      decodeError[Int]("- 123\n", "Cannot decode scala.Int from: - 123")
+      decodeError[Int]("Null\n", "Cannot decode scala.Int from: !!null")
+    }
+    "decode and encode booleans" in {
+      implicit val codec: LinkmlYamlCodec[Boolean] = LinkmlYamlCodec.derived
+      forAll(arbitrary[Boolean])(x => roundTrip(x, s"$x\n"))
+      decodeError[Boolean]("123\n", "Cannot decode scala.Boolean from: 123")
+      decodeError[Boolean]("tRUE\n", "Cannot decode scala.Boolean from: tRUE")
+      decodeError[Boolean]("a: true\n", "Cannot decode scala.Boolean from: a: true")
+      decodeError[Boolean]("- true\n", "Cannot decode scala.Boolean from: - true")
+      decodeError[Boolean]("~\n", "Cannot decode scala.Boolean from: !!null")
+    }
+    "decode and encode options of booleans" in {
+      implicit val codec: LinkmlYamlCodec[Option[Boolean]] = LinkmlYamlCodec.derived
+      roundTrip[Option[Boolean]](Some(true), "true\n")
+      roundTrip[Option[Boolean]](Some(false), "false\n")
+      roundTrip[Option[Boolean]](None, "!!null\n")
+      decodeError[Option[Boolean]]("123\n", "Cannot decode scala.Boolean from: 123")
+      decodeError[Option[Boolean]]("a: NULL\n", "Cannot decode scala.Boolean from: a: !!null")
+      decodeError[Option[Boolean]]("- null\n", "Cannot decode scala.Boolean from: - !!null")
+    }
+    "decode and encode sequences of booleans" in {
+      implicit val codec: LinkmlYamlCodec[Seq[Boolean]] = LinkmlYamlCodec.derived
+      roundTrip(Seq(true, false), "- true\n- false\n")
+      decodeError[Seq[Boolean]]("123\n", "Cannot decode scala.Boolean from: 123")
+      decodeError[Seq[Boolean]]("- ~\n", "Cannot decode scala.Boolean from: !!null")
+      decodeError[Seq[Boolean]](
+        "a: true\n",
+        "Cannot decode scala.collection.immutable.Seq[scala.Boolean] from: a: true",
+      )
+    }
+    "decode and encode sequences of option of booleans" in {
+      implicit val codec: LinkmlYamlCodec[Seq[Option[Boolean]]] = LinkmlYamlCodec.derived
+      roundTrip(Seq(Some(true), Some(false), None), "- true\n- false\n- !!null\n")
+      decodeError[Seq[Option[Boolean]]]("123\n", "Cannot decode scala.Boolean from: 123")
+      decodeError[Seq[Option[Boolean]]](
+        "a: null\n",
+        "Cannot decode scala.collection.immutable.Seq[scala.Option[scala.Boolean]] from: a: !!null",
+      )
+    }
+    "decode and encode maps of strings to booleans" in {
+      implicit val codec: LinkmlYamlCodec[Map[String, Boolean]] = LinkmlYamlCodec.derived
+      roundTrip(Map("abc" -> true), "abc: true\n")
+      decodeError[Map[String, Boolean]](
+        "123\n",
+        "Cannot decode scala.collection.immutable.Map[scala.Predef.String, scala.Boolean] from: 123",
+      )
+      decodeError[Map[String, Boolean]](
+        "null: true\n",
+        "Cannot decode java.lang.String from: !!null",
+      )
+      decodeError[Map[String, Boolean]]("abc: ~\n", "Cannot decode scala.Boolean from: !!null")
+    }
+    "decode and encode non-abstract classes" in {
+      class MyClass(val a: String, val b: Int, val c: Boolean) derives LinkmlYamlCodec {
+        @nowarn override def equals(other: Any): Boolean = other match {
+          case that: MyClass => a == that.a && b == that.b && c == that.c
+          case _ => false
+        }
+
+        override def hashCode(): Int = 31 * (31 * a.hashCode + b.hashCode) + c.hashCode
+      }
+
+      roundTrip(new MyClass("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
+      decodeError[MyClass](
+        "a: ABC\nb: 123\n",
+        """Missing required field 'c' of MyClass in:
+          |a: ABC
+          |b: 123
+          |""".stripMargin,
+      )
+    }
+    "decode and encode case classes" in {
+      case class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec
+
+      roundTrip(MyClass("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
+      decodeError[MyClass](
+        "b: 123\nc: true\n",
+        """Missing required field 'a' of MyClass in:
+          |b: 123
+          |c: true
+          |""".stripMargin,
+      )
+    }
+    "decode and encode case classes with private constructor" in {
+      case class MyClass private (a: String, b: Int, c: Boolean) derives LinkmlYamlCodec
+
+      object MyClass {
+        def make(a: String, b: Int, c: Boolean): MyClass = new MyClass(a, b, c)
+      }
+
+      roundTrip(MyClass.make("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
+      decodeError[MyClass](
+        "null",
+        """Missing required field 'a' of MyClass in:
+          |!!null""".stripMargin,
+      )
+    }
+    "decode and encode case classes with renamed fields" in {
+      case class MyClass(@named("x") a: String, @named("y") b: Int, @named("z") c: Boolean)
+          derives LinkmlYamlCodec
+
+      roundTrip(MyClass("ABC", 123, true), "x: ABC\ny: 123\nz: true\n")
+      decodeError[MyClass](
+        "a: ABC\nb: 123\nc: true\n",
+        """Missing required field 'x' of MyClass in:
+          |a: ABC
+          |b: 123
+          |c: true
+          |""".stripMargin,
+      )
+    }
+    "decode and encode case classes with default values" in {
+      case class MyClass(
+          a: Option[String] = None,
+          b: Seq[Int] = Nil,
+          c: Map[String, Boolean] = Map.empty,
+          d: Boolean = false,
+      ) derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(Some("ABC"), Seq(123, 456), Map("+++" -> true), true),
+        "a: ABC\nb: \n  - 123\n  - 456\nc: \n  +++: true\nd: true\n",
+      )
+      roundTrip(MyClass(Some("ABC")), "a: ABC\n")
+      decodeError[MyClass](
+        "c: true\n",
+        "Cannot decode scala.collection.immutable.Map[scala.Predef.String, scala.Boolean] from: true",
+      )
+    }
+    "decode and encode recursive case classes" in {
+      case class MyClass(v: Int, n: Option[MyClass] = None) derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(1, Some(MyClass(2, Some(MyClass(3, None))))),
+        "v: 1\nn: \n  v: 2\n  n: \n    v: 3\n",
+      )
+      decodeError[MyClass](
+        "v: 1\nn: \n  v: 2\n  n: \n    x: 3\n",
+        """Missing required field 'v' of MyClass in:
+          |x: 3
+          |""".stripMargin,
+      )
+    }
+    "decode and encode case classes with simple dictionaries" in {
+      case class SimpleDictEntry(
+          @value v: Int,
+          @id k: String,
+      ) // no need to derive LinkmlYamlCodec directly
+
+      case class MyClass(@simpleDict d: Map[String, SimpleDictEntry], x: Option[Int] = None)
+          derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(
+          Map(
+            "a" -> SimpleDictEntry(k = "a", v = 1),
+            "b" -> SimpleDictEntry(k = "b", v = 2),
+            "c" -> SimpleDictEntry(k = "c", v = 3),
+          ),
+        ),
+        "d: \n  a: 1\n  b: 2\n  c: 3\n",
+      )
+      decodeError[MyClass](
+        "d: \n  a: 1\n  b: 2\n  null: 3\n",
+        "Cannot decode java.lang.String from: !!null",
+      )
+      decodeError[MyClass](
+        "d: \n  a: 1\n  b: 2\n  c:\n",
+        "Cannot decode scala.Int from: !!null",
+      )
+    }
+    "decode and encode case classes with compact dictionaries" in {
+      case class DictEntry(@id k: String, v: Int, e: Boolean)
+
+      case class MyClass(@compactDict d: Map[String, DictEntry], x: Option[Int] = None)
+          derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(
+          Map(
+            "a" -> DictEntry("a", 1, true),
+            "b" -> DictEntry("b", 2, true),
+            "c" -> DictEntry("c", 3, false),
+          ),
+        ),
+        "d: \n  a: \n    v: 1\n    e: true\n  b: \n    v: 2\n    e: true\n  c: \n    v: 3\n    e: false\n",
+      )
+      decodeError[MyClass](
+        "d: \n  a: \n    e: true\n",
+        """Missing required field 'v' of DictEntry in:
+          |e: true""".stripMargin,
+      )
+    }
+    "decode and encode case classes with expanded dictionaries" in {
+      case class DictEntry(@id k: String)(
+          val v: Int,
+          val e: Boolean,
+      ) // equals, hashCode, and toString will be generated with usage of 'k' field only
+
+      case class MyClass(@expandedDict d: Map[String, DictEntry], x: Option[Int] = None)
+          derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(
+          Map(
+            "a" -> DictEntry("a")(1, true),
+            "b" -> DictEntry("b")(2, true),
+            "c" -> DictEntry("c")(3, false),
+          ),
+        ),
+        "d: \n  a: \n    k: a\n    v: 1\n    e: true\n  b: \n    k: b\n    v: 2\n    e: true\n  c: \n    k: c\n    v: 3\n    e: false\n",
+      )
+      decodeError[MyClass](
+        "d: \n  a: \n    e: true\n",
+        """Missing required field 'v' of DictEntry in:
+          |e: true""".stripMargin,
+      )
+    }
+
+    "decode and encode ADTs with objects for all cases" in {
+      sealed trait ADT
+
+      object ADT {
+        case object Case1 extends ADT
+        case object Case2 extends ADT
+        case object Case3 extends ADT
+      }
+
+      implicit val codec: LinkmlYamlCodec[ADT] = LinkmlYamlCodec.derived
+
+      roundTrip(ADT.Case1: ADT, "Case1\n")
+      roundTrip(ADT.Case2: ADT, "Case2\n")
+      roundTrip(ADT.Case3: ADT, "Case3\n")
+      decodeError[ADT]("Case4\n", "Cannot decode ADT from: Case4")
+    }
+
+    "decode and encode Scala 3 enums" in {
+      enum Enum {
+        case Case1, Case2, Case3
+      }
+
+      implicit val codec: LinkmlYamlCodec[Enum] = LinkmlYamlCodec.derived
+
+      roundTrip(Enum.Case1: Enum, "Case1\n")
+      roundTrip(Enum.Case2: Enum, "Case2\n")
+      roundTrip(Enum.Case3: Enum, "Case3\n")
+      decodeError[Enum]("Case4\n", "Cannot decode Enum from: Case4")
+    }
+
+    "decode and encode case classes with a custom codec for booleans" in {
+      implicit val codec: LinkmlYamlCodec[Boolean] = new LinkmlYamlCodec[Boolean] {
+        private val trueNode = Node.ScalarNode("1")
+        private val falseNode = Node.ScalarNode("0")
+
+        override def decode(node: Node, id: Option[Any]): Boolean = node match {
+          case Node.ScalarNode(value, _) => value == "true" || value == "1"
+          case _ => false
+        }
+
+        override def encode(x: Boolean, skipId: Boolean): Node =
+          if (x) trueNode
+          else falseNode
+      }
+
+      case class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec
+
+      roundTrip(MyClass("ABC", 123, true), "a: ABC\nb: 123\nc: 1\n")
+      roundTrip(MyClass("ABC", 123, false), "a: ABC\nb: 123\nc: 0\n")
+      decodeError[MyClass](
+        "a: ABC\nb: 123\n",
+        """Missing required field 'c' of MyClass in:
+          |a: ABC
+          |b: 123""".stripMargin,
+      )
+    }
+    "decode and encode generic case classes with one field as scalar nodes" in {
+      case class MyClass[A](v: A)
+
+      implicit val codec: LinkmlYamlCodec[MyClass[Int]] = LinkmlYamlCodec.derived
+      roundTrip(MyClass(1), "1\n")
+      decodeError[MyClass[Int]]("true\n", "Cannot decode scala.Int from: true")
+      decodeError[MyClass[Int]]("v: 1\n", "Cannot decode scala.Int from: v: 1")
+    }
+    "decode and encode case classes generic case classes using implicit values for types used in fields" in {
+      case class MyClass[A, B, C](a: A, b: B, c: C) derives LinkmlYamlCodec
+
+      implicit val codec1: LinkmlYamlCodec[String] = LinkmlYamlCodec.derived
+      implicit val codec2: LinkmlYamlCodec[Int] = LinkmlYamlCodec.derived
+      implicit val codec3: LinkmlYamlCodec[Boolean] = LinkmlYamlCodec.derived
+      roundTrip(MyClass("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
+      roundTrip(MyClass(123, "ABC", true), "a: 123\nb: ABC\nc: true\n")
+      roundTrip(MyClass(123, true, "ABC"), "a: 123\nb: true\nc: ABC\n")
+      roundTrip(MyClass("ABC", "DEF", "GHI"), "a: ABC\nb: DEF\nc: GHI\n")
+      decodeError[MyClass[Int, Int, Int]](
+        "a: ~\nb: ~\nc: ~\n",
+        "Cannot decode scala.Int from: !!null",
+      )
+    }
+    "don't generate codecs for classes with private fields in the primary constructor" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """Getter or field 'a' of 'MyClass' is private. It should be defined as 'val' or 'var' in the primary constructor."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(private[this] val a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """Getter or field 'a' of 'MyClass' is private. It should be defined as 'val' or 'var' in the primary constructor."""
+      })
+    }
+    "don't generate codecs for unsupported types" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[Set[Int]]"""
+      }).getMessage.contains {
+        """Cannot find leaf objects for ADT base 'scala.collection.immutable.Set[scala.Int]'. Please add them or provide a custom implicitly accessible codec for the ADT base."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[Map[Float, String]]"""
+      }).getMessage.contains {
+        """Cannot find leaf objects for ADT base 'scala.Float'. Please add them or provide a custom implicitly accessible codec for the ADT base."""
+      })
+    }
+    "don't generate codecs for case classes with unexpected combination of field annotations" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(@id @value a: String, b: Int, @named("x") c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """Expected only one of annotation: '@id', '@value', '@simpleDict', '@compactDict', or '@expandedDict' for 'a' of 'MyClass'."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(@id @named("x") a: String, @value @named("y") b: Int, @named("z") @named("zed") c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """Duplicated 'eu.neverblink.linkml.runtime.named' defined for 'c' of 'MyClass'."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(@named("b") a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """Duplicated yaml key(s) defined for 'MyClass': 'b'. Keys are derived from field names of the class and can be overridden by 'eu.neverblink.linkml.runtime.named' annotation(s)."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(@named("x" + "y") a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """Cannot evaluate a parameter of the '@named' annotation in type 'MyClass'"""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(@id a: String, @id b: Int, c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """More than one field is defined with '@id' annotation in 'MyClass'."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(@id a: String, @value b: Int, @value c: Boolean) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """More than one field is defined with '@value' annotation in 'MyClass'."""
+      })
+    }
+  }
+
+  private def roundTrip[T](value: T, yaml: String)(implicit codec: LinkmlYamlCodec[T]): Unit = {
+    parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(value)
+    codec.encode(value).asYaml shouldEqual yaml
+  }
+
+  private def decodeError[T](yaml: String, error: String)(implicit
+      codec: LinkmlYamlCodec[T],
+  ): Unit =
+    assert(
+      intercept[Throwable](parseYaml(yaml).map(x => codec.decode(x))).getMessage.contains(error),
+    )
+}

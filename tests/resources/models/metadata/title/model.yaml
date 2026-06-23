@@ -1,0 +1,25 @@
+id: https://neverblink.eu/linkml/tests/metadata/title/
+name: title
+title: "Schema for testing"
+description: "This schema is used to test the title and description metadata fields."
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    title: "Some Class"
+    description: "This is a class for testing purposes."
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    title: "Some Slot"
+    description: "This is a slot for testing purposes."
+    range: string

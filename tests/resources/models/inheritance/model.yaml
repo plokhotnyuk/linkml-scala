@@ -1,0 +1,31 @@
+id: https://neverblink.eu/linkml/tests/inheritance/
+name: inheritance
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+instantiates:
+  - https://neverblink.eu/linkml/tests/Metadata
+extensions:
+  derivedEquals: basic
+
+imports:
+  - linkml:types
+
+classes:
+  BaseClass:
+    slots:
+      - some_other_slot
+  ChildClass:
+    tree_root: true
+    is_a: BaseClass
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    range: string
+  some_other_slot:
+    range: integer
+    required: true

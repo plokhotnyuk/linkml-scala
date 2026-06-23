@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/uriOrCurie/> .
+@prefix linkml: <https://w3id.org/linkml/> .
+
+_:b1 a :SomeClass;
+  :some_other_slot linkml:some_value .

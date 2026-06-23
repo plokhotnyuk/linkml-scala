@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/explicitInlineImplicitlyAsSimpleDict/> .
+
+_:b a :SomeClass;
+  :some_slot :some_id .
+
+:some_id a :SomeOtherClass;
+  :other_slot 123 .

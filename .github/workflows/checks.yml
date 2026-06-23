@@ -1,0 +1,44 @@
+name: Code checks
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scalafmt-lint:
+    name: Scalafmt lint
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Run scalafmt
+        run: ./mill --no-server __.jvm.checkFormat
+
+
+  scalafix-lint:
+    name: Scalafix lint
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Run scalafix
+        run: ./mill --no-server __.jvm.fix --check

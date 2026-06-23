@@ -1,0 +1,11 @@
+@prefix : <https://neverblink.eu/linkml/tests/typed/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:typed_002 a :Typed;
+    :stringSlot "002 stringy";
+    :booleanSlot "false"^^xsd:boolean;
+    :intSlot "-100"^^xsd:integer;
+    :floatSlot "-0.01"^^xsd:decimal;
+    :dateSlot "2020-01-31"^^xsd:date;
+    :enumSlot "SOME_OTHER_ENUM_VALUE";
+    :customSlot "002 custom"^^:Custom .

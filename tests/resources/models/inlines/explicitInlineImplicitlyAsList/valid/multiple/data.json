@@ -1,0 +1,11 @@
+{
+  "some_slot": [
+    {
+      "other_slot": "1"
+    },
+    {
+      "other_slot": "2"
+    },
+    {}
+  ]
+}

@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/cardinality/> .
+
+_:b a :Cardinal;
+    :one "a";
+    :atLeastOne "a" ;
+    :atMostOne "a", "b" .

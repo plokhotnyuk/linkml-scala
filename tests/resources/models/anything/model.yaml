@@ -1,0 +1,15 @@
+id: https://neverblink.eu/linkml/tests/anything/
+name: anything
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+imports:
+  - linkml:extended_types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: Any
+        required: true

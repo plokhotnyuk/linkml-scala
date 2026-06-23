@@ -1,0 +1,57 @@
+id: https://neverblink.eu/linkml/tests/typed/
+name: typed
+imports:
+  - linkml:types
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+classes:
+  Typed:
+    tree_root: true
+    slots:
+      - stringSlot
+      - booleanSlot
+      - intSlot
+      - floatSlot
+      - dateSlot
+      - enumSlot
+      - customSlot
+
+enums:
+  SomeEnum:
+    permissible_values:
+      SOME_ENUM_VALUE:
+      SOME_OTHER_ENUM_VALUE:
+      THE_THIRD_MYSTERIOUS_OPTION:
+
+types:
+  custom:
+    name: custom
+    uri: https://neverblink.eu/linkml/tests/typed/Custom
+    base: str
+
+slots:
+  stringSlot:
+    range: string
+    required: true
+  booleanSlot:
+    range: boolean
+    required: true
+  intSlot:
+    range: integer
+    required: true
+  floatSlot:
+    range: decimal
+    required: true
+  dateSlot:
+    range: date
+    required: true
+  enumSlot:
+    range: SomeEnum
+    required: true
+  customSlot:
+    range: custom
+    required: true

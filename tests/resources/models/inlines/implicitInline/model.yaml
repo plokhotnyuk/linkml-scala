@@ -1,0 +1,30 @@
+id: https://neverblink.eu/linkml/tests/implicitInline/
+name: implicitInline
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+instantiates:
+  - https://neverblink.eu/linkml/tests/Metadata
+extensions:
+  derivedEquals: inlines/explicitInline
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    slots:
+      - some_other_slot
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    range: SomeOtherClass
+  some_other_slot:
+    range: integer
+    required: true

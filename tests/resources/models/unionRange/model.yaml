@@ -1,0 +1,25 @@
+id: https://neverblink.eu/linkml/tests/unionRange
+name: unionRange
+imports:
+  - linkml:types
+  - linkml:extended_types
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+classes:
+  Union:
+    tree_root: true
+    slots:
+      - string_or_int_slot
+
+slots:
+  string_or_int_slot:
+    required: true
+    range: Any
+    any_of:
+      - range: integer
+      - range: string

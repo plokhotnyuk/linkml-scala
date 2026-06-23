@@ -1,0 +1,32 @@
+id: https://neverblink.eu/linkml/tests/typeDesignator/
+name: typeDesignator
+imports:
+  - linkml:types
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+classes:
+  Thing:
+    tree_root: true
+    attributes:
+      type:
+        required: true
+        designates_type: true
+        range: string
+
+  IntThing:
+    is_a: Thing
+    attributes:
+      value:
+        required: true
+        range: integer
+
+  StringThing:
+    is_a: Thing
+    attributes:
+      value:
+        required: true
+        range: string

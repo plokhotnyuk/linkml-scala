@@ -1,0 +1,21 @@
+id: https://neverblink.eu/linkml/tests/selfCompact3/
+name: selfCompact3
+comments:
+  - Some generators provide annotations to the class itself describing how it should be inlined
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      id:
+        key: true
+      some_slot: {}
+      some_other_slot: {}

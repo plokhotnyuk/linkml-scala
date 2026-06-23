@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/reference/> .
+
+_:b a :SomeClass;
+    :some_slot :some_reference . # TODO LNK-59

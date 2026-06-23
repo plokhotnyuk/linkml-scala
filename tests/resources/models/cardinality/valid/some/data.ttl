@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/cardinality/> .
+
+_:b1 a :Cardinal;
+    :one "string" ;
+    :atLeastOne "one", "two" ;
+    :atMostOne "set" ;
+    :zeroOrMore "zero", "or", "more" .

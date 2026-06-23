@@ -1,0 +1,5 @@
+id: a
+name: a
+imports:
+  - level1/b
+  - level1/c

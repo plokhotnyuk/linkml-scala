@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/uri/
+name: uri
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ex: http://example.org/
+
+emit_prefixes:
+  - ex
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    attributes:
+      id:
+        identifier: true
+        range: uri
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: uri
+      some_other_slot:
+        range: SomeOtherClass

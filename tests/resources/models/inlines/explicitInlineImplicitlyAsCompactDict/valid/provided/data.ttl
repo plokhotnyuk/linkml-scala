@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/explicitInlineImplicitlyAsCompactDict/> .
+
+_:b a :SomeClass;
+  :some_slot :some_id .
+
+:some_id a :SomeOtherClass;
+  :id "some_id" . # TODO LNK-59

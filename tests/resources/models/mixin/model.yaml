@@ -1,0 +1,34 @@
+id: https://neverblink.eu/linkml/tests/mixin/
+name: mixin
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+instantiates:
+  - https://neverblink.eu/linkml/tests/Metadata
+extensions:
+  derivedEquals: basic
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    mixin: true
+    slots:
+      - some_other_slot
+  SomeClass:
+    tree_root: true
+    mixins:
+      - SomeOtherClass
+    slots:
+      - some_slot
+
+slots:
+  some_slot:
+    range: string
+  some_other_slot:
+    range: integer
+    required: true

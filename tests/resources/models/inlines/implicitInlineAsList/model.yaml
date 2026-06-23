@@ -1,0 +1,21 @@
+id: https://neverblink.eu/linkml/tests/implicitInlineAsList/
+name: implicitInlineAsList
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    multivalued: true
+    range: SomeOtherClass

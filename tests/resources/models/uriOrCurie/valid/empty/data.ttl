@@ -1,0 +1,3 @@
+@prefix : <https://neverblink.eu/linkml/tests/uriOrCurie/> .
+
+_:b1 a :SomeClass .

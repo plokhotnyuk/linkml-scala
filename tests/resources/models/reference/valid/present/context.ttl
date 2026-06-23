@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/reference/> .
+
+:some_reference a :SomeOtherClass;
+  :id "some_reference" .
