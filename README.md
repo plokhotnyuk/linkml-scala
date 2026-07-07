@@ -28,7 +28,13 @@ You can install `linkml-scala` on any platform (including Windows) using [mise](
 environment manager:
 
 ```shell
-mise use 'github:NeverBlink-OSS/linkml-scala[exe=linkml-scala]'
+mise use 'github:NeverBlink-OSS/linkml-scala'
+linkml-scala
+```
+
+Or install a specific version (useful if a new release is within mise's 7-day registry caching window)
+```shell
+mise use 'github:NeverBlink-OSS/linkml-scala@v0.8.6'
 linkml-scala
 ```
 
