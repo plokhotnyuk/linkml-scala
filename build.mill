@@ -273,25 +273,24 @@ trait CommonModule
   )
 
   final def publishVersion = Task {
-    try {
-      val gitOutput = os.proc("git", "describe", "--tags", "--long", "--match", "v*")
-        .call(stderr = os.Pipe).out.trim()
-      val GitDescribeRegex = """v(.*)-(\d+)-g([0-9a-fA-F]+)""".r
-      gitOutput match {
-        case GitDescribeRegex(tag, commitCount, shortHash) =>
-          if (commitCount == "0") tag
-          else s"$tag-$commitCount-$shortHash-SNAPSHOT"
-        case other =>
-          s"$other-SNAPSHOT"
-      }
-    } catch {
-      case _: Exception => "0.1.0-SNAPSHOT"
+    val gitOutput = os.proc("git", "describe", "--tags", "--long", "--match", "v*")
+      .call(cwd = mill.api.BuildCtx.workspaceRoot, stderr = os.Pipe)
+      .out
+      .trim()
+    val GitDescribeRegex = """v(.*)-(\d+)-g([0-9a-fA-F]+)""".r
+    gitOutput match {
+      case GitDescribeRegex(tag, commitCount, shortHash) =>
+        if (commitCount == "0") tag
+        else s"$tag-$commitCount-$shortHash-SNAPSHOT"
+      case other =>
+        s"$other-SNAPSHOT"
     }
   }
 
   final def scalaVersion = scala
 
   def scalacOptions = Seq(
+    "-release", "17",
     "-Wunused:all",
     "-Xcheck-macros",
     "-explain",
