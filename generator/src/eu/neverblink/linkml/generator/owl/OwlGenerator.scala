@@ -134,13 +134,11 @@ object OwlGenerator {
       // name that several schemas define is visited once for each of them, which adds nothing
       // new, since `axioms` is a set.
       includedClasses.foreach(c => if (!c.isAny) addClass(c))
-      // Only slots and attributes declare properties, so a `slot_uri` that only a `slot_usage`
-      // sets is never declared (LNK-236).
       sv.schemas.foreach(_.slotDefinitions.keys.foreach { name =>
         val s = sv.slotDefinitions(name)
         if (included(s)) addSlot(s)
       })
-      includedClasses.foreach(c => if (!c.isAny) addAttributes(c))
+      includedClasses.foreach(c => if (!c.isAny) addClassProperties(c))
       sv.schemas.foreach(_.enums.keys.foreach { name =>
         val e = sv.enums(name)
         if (included(e)) addEnum(e)
@@ -412,14 +410,30 @@ object OwlGenerator {
       cv.cls.isA.foreachFast(addParent)
       cv.cls.mixins.foreach(addParent)
       val seen = mutable.HashSet.empty[String]
-      def restrict(name: String): Unit =
+      def restrict(name: String, listed: Boolean): Unit =
         if (seen.add(name)) {
-          cv.derivedAttributes.get(name).foreachFast(s => addRestrictions(cv, s, self))
+          val s = cv.derivedAttributes.getOrElse(name, null)
+          if (s ne null) {
+            // The parts that a parent leaves out, or all of them if it uses another property
+            var parts = 0
+            cv.parents.foreach { p =>
+              val inherited = p.derivedAttributes.getOrElse(name, null)
+              if (inherited ne null) {
+                if (inherited.uriStr != s.uriStr) parts |= RestateAll
+                else {
+                  if (!sharedRanges.isShared(p, name)) parts |= RestateRange
+                  if (!sharedMaxima.isShared(p, name)) parts |= RestateMax
+                }
+              }
+            }
+            if (listed || parts != 0) addRestrictions(cv, s, self, listed, parts)
+          }
         }
-      // The slots the class declares or refines itself, not ones it just inherits.
-      cv.cls.slots.foreach(s => restrict(s.value))
-      cv.cls.attributes.keysIterator.foreach(restrict)
-      cv.cls.slotUsage.keysIterator.foreach(restrict)
+      // The slots the class lists or changes itself, then the inherited ones it has to restate
+      cv.cls.slots.foreach(s => restrict(s.value, true))
+      cv.cls.attributes.keysIterator.foreach(restrict(_, true))
+      cv.cls.slotUsage.keysIterator.foreach(restrict(_, true))
+      cv.sortedAttributeViews.foreach(a => restrict(a.slotView.name, false))
       cv.cls.uniqueKeys.valuesIterator.foreach { key =>
         val b = Vector.newBuilder[String]
         key.uniqueKeySlots.foreach { s =>
@@ -443,11 +457,62 @@ object OwlGenerator {
       }
     }
 
-    /** Adds the restrictions that the class states on the slot, as superclasses of `self`. */
-    private def addRestrictions(cv: ClassView, s: SlotView, self: ClassExpr.Named): Unit = {
+    /** Restate the range of a slot that a parent leaves out. */
+    private inline val RestateRange = 1
+
+    /** Restate the `owl:maxCardinality 1` of a slot that a parent leaves out. */
+    private inline val RestateMax = 2
+
+    /** Restate all restrictions of a slot, since a parent uses another property for it. */
+    private inline val RestateAll = 4
+
+    /** A subclass inherits the restrictions of its parents, and can only add to them. So a class
+      * states the range of a slot only if every descendant that uses the same property for it has a
+      * range derived from the class's. A descendant that uses another property is not limited by
+      * these restrictions, and states its own.
+      */
+    private lazy val sharedRanges = new SharedSlots((own, their) =>
+      own.slotView.uriStr != their.slotView.uriStr ||
+        their.slotView.hasRangeDerivedFrom(own.slotView),
+    )
+
+    /** Like [[sharedRanges]], for the `owl:maxCardinality 1` of a single-valued slot, which a
+      * descendant that makes the slot multivalued with a `slot_usage` can't have.
+      */
+    private lazy val sharedMaxima = new SharedSlots((own, their) =>
+      own.slotView.uriStr != their.slotView.uriStr ||
+        own.slotView.slot.multivalued == their.slotView.slot.multivalued,
+    )
+
+    /** Adds the restrictions that the class states on the slot, as superclasses of `self`.
+      *
+      * @param listed
+      *   Whether the class lists the slot, or changes it with `slot_usage`
+      * @param parts
+      *   The parts that the class restates, with the `slot_usage` of its ancestors, because a
+      *   parent leaves them out: [[RestateRange]], [[RestateMax]], or [[RestateAll]] when a parent
+      *   uses another property for the slot
+      */
+    private def addRestrictions(
+        cv: ClassView,
+        s: SlotView,
+        self: ClassExpr.Named,
+        listed: Boolean,
+        parts: Int,
+    ): Unit = {
       val name = s.slot.name
       val usage = cv.cls.slotUsage.getOrElse(name, null)
-      val sources = definitionsOf(name, cv)
+      val all = (parts & RestateAll) != 0
+      val full = listed || all
+      val restatesRange = all || (parts & RestateRange) != 0
+      val restatesMax = all || (parts & RestateMax) != 0
+      val own = definitionsOf(name, cv, false)
+      lazy val inherited = definitionsOf(name, cv, true)
+      // The definitions of the slot for a part, with those of the ancestors if it is restated
+      def sourcesOf(restated: Boolean): collection.Seq[SlotDefinition] =
+        if (restated) inherited else own
+
+      val sources = sourcesOf(all)
 
       def any(f: SlotDefinition => Boolean): Boolean = sources.exists(f)
 
@@ -462,7 +527,8 @@ object OwlGenerator {
       }
       // With `slot_usage` on an inherited slot, state the range only if it is narrowed. For a
       // slot from an imported schema, the importer can't tell a repeated range from a new one.
-      val declares = cv.cls.slots.exists(_.value == name) || cv.cls.attributes.contains(name)
+      val declares =
+        all || cv.cls.slots.exists(_.value == name) || cv.cls.attributes.contains(name)
       val narrows = (usage ne null) && (usage.range.isDefined || usage.anyOf.nonEmpty)
       val range =
         if (annotation) {
@@ -471,22 +537,32 @@ object OwlGenerator {
               sv.getElement(usage.range.get.value).orNullFast
             } else null
           if (el ne null) rangeOfElement(el, s.slot) else null
-        } else if (declares || narrows) nearestRange(s, sources)
-        else null
+        } else if (
+          (restatesRange || full && (declares || narrows)) && sharedRanges.isShared(cv, name)
+        ) {
+          nearestRange(s, sourcesOf(restatesRange))
+        } else null
       if (range ne null) state(ClassExpr.AllValuesFrom(p, range))
       // An IRI identifier is the node's IRI, so stating it as a property is optional.
       val iriIdentifier = s.slot.identifier && cv.subjectType.foldFast(false)(_.isIri)
-      val exact = firstCardinality(sources, _.exactCardinality)
+      val exact = if (full) firstCardinality(sources, _.exactCardinality) else noCardinality
       var min = exact
-      if (min == noCardinality) min = firstCardinality(sources, _.minimumCardinality)
-      if (min == noCardinality && !iriIdentifier && any(d => d.required || d.key || d.identifier)) {
-        min = 1
+      if (full) {
+        if (min == noCardinality) min = firstCardinality(sources, _.minimumCardinality)
+        if (
+          min == noCardinality && !iriIdentifier && any(d => d.required || d.key || d.identifier)
+        ) {
+          min = 1
+        }
       }
-      val single = !annotation && !any(_.multivalued)
-      // A subclass inherits this limit, so a `slot_usage` there that makes the slot multivalued
-      // has no effect (LNK-238).
+      // The definitions to take the maximum from
+      val maxSources = sourcesOf(restatesMax)
+      val single = (full || restatesMax) && !annotation && !maxSources.exists(_.multivalued) &&
+        sharedMaxima.isShared(cv, name)
       var max = exact
-      if (max == noCardinality) max = firstCardinality(sources, _.maximumCardinality)
+      if (max == noCardinality && (full || restatesMax)) {
+        max = firstCardinality(maxSources, _.maximumCardinality)
+      }
       if (max == noCardinality && single && !isText(s)) max = 1
       // OWL 2 DL allows no cardinality on a non-simple property, so a required value becomes
       // `someValuesFrom`.
@@ -512,24 +588,26 @@ object OwlGenerator {
           )
         }
       }
-      val text = firstOf(sources, _.equalsString)
-      var value: Value = if (text ne null) valueOf(s, text) else null
-      if (value eq null) {
-        val n = firstCardinality(sources, _.equalsNumber)
-        if (n != noCardinality) value = Literal(n.toString, XmlSchema.integer)
-      }
-      if (value ne null) state(ClassExpr.HasValue(p, value))
+      if (full) {
+        val text = firstOf(sources, _.equalsString)
+        var value: Value = if (text ne null) valueOf(s, text) else null
+        if (value eq null) {
+          val n = firstCardinality(sources, _.equalsNumber)
+          if (n != noCardinality) value = Literal(n.toString, XmlSchema.integer)
+        }
+        if (value ne null) state(ClassExpr.HasValue(p, value))
 
-      // `has_member`, plus any under `all_of`. The importer writes a class that needs values of
-      // several kinds that way.
-      def addMember(m: AnonymousSlotExpression): Unit = {
-        val r = expressionRange(s, m)
-        if (r ne null) state(ClassExpr.SomeValuesFrom(p, r))
-      }
+        // `has_member`, plus any under `all_of`. The importer writes a class that needs values of
+        // several kinds that way.
+        def addMember(m: AnonymousSlotExpression): Unit = {
+          val r = expressionRange(s, m)
+          if (r ne null) state(ClassExpr.SomeValuesFrom(p, r))
+        }
 
-      val member = firstOf(sources, _.hasMember)
-      if (member ne null) addMember(member)
-      if (usage ne null) usage.allOf.foreach(_.hasMember.foreachFast(addMember))
+        val member = firstOf(sources, _.hasMember)
+        if (member ne null) addMember(member)
+        if (usage ne null) usage.allOf.foreach(_.hasMember.foreachFast(addMember))
+      }
       // A class that uses a slot without constraining it still records the use, with a
       // restriction that any value meets.
       if (stated == 0 && !annotation && declares) {
@@ -601,29 +679,42 @@ object OwlGenerator {
 
     /** The range of a slot, in a class if `context` is not `null`, or `null` if it has none. */
     private def rangeOf(s: SlotView, context: ClassView = null): Filler =
-      nearestRange(s, definitionsOf(s.slot.name, context))
+      nearestRange(s, definitionsOf(s.slot.name, context, false))
 
     /** The definitions of a slot, nearest first: the class's `slot_usage`, the attributes of the
-      * class and its ancestors, then the slot and its parents. An ancestor's `slot_usage` is
-      * skipped, because OWL passes it down through the subclass axiom anyway.
+      * class and its ancestors, then the slot and its parents.
+      *
+      * @param ancestorUsage
+      *   Whether to take the `slot_usage` of the ancestors too, before their attributes. Without
+      *   it, an ancestor's `slot_usage` is skipped, because OWL passes it down through the subclass
+      *   axiom anyway.
       */
     private def definitionsOf(
         name: String,
         context: ClassView,
+        ancestorUsage: Boolean,
     ): mutable.ArrayBuffer[SlotDefinition] = {
       val b = mutable.ArrayBuffer.empty[SlotDefinition]
       if (context ne null) {
-        context.cls.slotUsage.get(name).foreachFast(u => b.addOne(u))
-        context.ancestorsWithSelf.foreach(_.cls.attributes.get(name).foreachFast(a => b.addOne(a)))
+        if (ancestorUsage) {
+          context.ancestorsWithSelf.foreach { a =>
+            a.cls.slotUsage.get(name).foreachFast(u => b.addOne(u))
+            a.cls.attributes.get(name).foreachFast(u => b.addOne(u))
+          }
+        } else {
+          context.cls.slotUsage.get(name).foreachFast(u => b.addOne(u))
+          context.ancestorsWithSelf.foreach(
+            _.cls.attributes.get(name).foreachFast(a => b.addOne(a)),
+          )
+        }
       }
       sv.slotDefinitions.get(name).foreachFast(_.ancestorsWithSelf.foreach(a => b.addOne(a.slot)))
       b
     }
 
-    /** The range of the nearest definition that has one, or `null` if it can't be said in OWL.
-      * Skipping an ancestor's `slot_usage` loses the range when the class lists the slot itself, or
-      * when the slot URI changes on the way (LNK-236). The derived slot is not used, since it keeps
-      * the inherited `any_of` lists in `all_of`, and OWL already requires them through subclassing.
+    /** The range of the nearest definition that has one, or `null` if it can't be said in OWL. The
+      * derived slot is not used, since it keeps the inherited `any_of` lists in `all_of`, and OWL
+      * already requires them through subclassing.
       */
     private def nearestRange(s: SlotView, definitions: collection.Seq[SlotDefinition]): Filler = {
       val e = definitions.find(d => d.range.isDefined || d.anyOf.nonEmpty).orNullFast
@@ -958,17 +1049,28 @@ object OwlGenerator {
       }
     }
 
-    /** Declares properties for attributes, which have no top-level slot. Their range and
-      * cardinality are stated on their class.
+    /** Declares the properties that only a class gives a slot: those of its attributes, which have
+      * no top-level slot, and a `slot_uri` that its `slot_usage` sets. Their range and cardinality
+      * are stated on their class.
       */
-    private def addAttributes(cv: ClassView): Unit =
-      cv.cls.attributes.foreachEntry { (name, attribute) =>
-        val derived = cv.derivedAttributes(name)
+    private def addClassProperties(cv: ClassView): Unit = {
+      cv.cls.attributes.foreachEntry((name, attribute) => addClassProperty(cv, name, attribute))
+      cv.cls.slotUsage.foreachEntry { (name, usage) =>
+        if (usage.slotUri.isDefined) addClassProperty(cv, name, null)
+      }
+    }
+
+    /** Declares the property of a slot of the class, with the annotations of `attribute` if it is
+      * not `null`.
+      */
+    private def addClassProperty(cv: ClassView, name: String, attribute: SlotDefinition): Unit = {
+      val derived = cv.derivedAttributes.getOrElse(name, null)
+      if (derived ne null) {
         val iri = derived.uriStr
         if (!declared(iri)) {
           val kind = kindOf(derived)
           add(Declaration(kind, iri))
-          annotate(iri, attribute)
+          if (attribute ne null) annotate(iri, attribute)
           if (kind != EntityKind.AnnotationProperty) {
             // If every use of the property has the same range, that becomes its range.
             val uses = rangesByProperty.getOrElse(iri, noRanges)
@@ -997,6 +1099,7 @@ object OwlGenerator {
           }
         }
       }
+    }
 
     /** The `domain` of each use of each property, in every class. */
     private lazy val domainsByProperty
