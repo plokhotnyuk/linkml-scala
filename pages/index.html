@@ -211,7 +211,8 @@
     .outputs { display: grid; grid-template-columns: max-content 1fr; gap: 12px 16px; align-items: center; margin: 0; }
     .outputs dt { font-family: var(--code-font); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
     .outputs dd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
-    .outputs dd span { padding: 4px 12px; border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); font-size: 14px; }
+    .outputs dd a { padding: 4px 12px; border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); font-size: 14px; }
+    .outputs dd a:hover { color: var(--chip-text); box-shadow: inset 0 0 0 1px currentColor; }
 
     .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 48px; }
     .feature { padding: 22px 24px; }
@@ -403,10 +404,10 @@
         <span class="k">range</span>: <span class="n">Person</span></code></pre>
           </div>
           <dl class="outputs">
-            <dt>Schemas</dt><dd><span>JSON Schema</span><span>GraphQL</span><span>Frictionless</span><span>SHACL</span></dd>
-            <dt>Ontologies</dt><dd><span>OWL</span><span>RDFS</span><span>Apache Ossie</span></dd>
-            <dt>Code</dt><dd><span>Pydantic</span><span>TypeScript</span><span>Scala</span></dd>
-            <dt>Docs</dt><dd><span>Markdown</span><span>ER diagrams</span></dd>
+            <dt>Schemas</dt><dd><a href="/docs/generators/json-schema/">JSON Schema</a><a href="/docs/generators/graphql/">GraphQL</a><a href="/docs/generators/frictionless/">Frictionless</a><a href="/docs/generators/shacl/">SHACL</a></dd>
+            <dt>Ontologies</dt><dd><a href="/docs/generators/owl/">OWL</a><a href="/docs/generators/rdfs/">RDFS</a><a href="/docs/generators/ossie/">Apache Ossie</a></dd>
+            <dt>Code</dt><dd><a href="/docs/generators/pydantic/">Pydantic</a><a href="/docs/generators/typescript/">TypeScript</a><a href="/docs/generators/java/">Java</a><a href="/docs/generators/scala/">Scala</a></dd>
+            <dt>Docs</dt><dd><a href="/docs/generators/docs/">Markdown</a><a href="/docs/generators/er-diagram/">ER diagrams</a></dd>
           </dl>
         </div>
       </div>
