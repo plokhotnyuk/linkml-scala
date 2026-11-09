@@ -890,6 +890,59 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       schema.classes("Person").classUri shouldBe Some(Uri("https://example.org/schema/Person"))
     }
 
+    "use the given id, name and default prefix when a schema leaves them out" in {
+      val schema = parseWithDefaults(
+        """prefixes:
+          |  ex: https://example.org/
+          |classes:
+          |  Person:
+          |    class_uri: Person
+          |  Place:
+          |    class_uri: this:Place
+          |""".stripMargin,
+      )
+      schema.id shouldBe Uri("urn:model:a")
+      schema.name shouldBe "123"
+      schema.defaultPrefix shouldBe Some("this")
+      schema.prefixes.keySet shouldBe Set("ex", "this")
+      schema.classes("Person").classUri shouldBe Some(Uri("urn:model:a#Person"))
+      schema.classes("Place").classUri shouldBe Some(Uri("urn:model:a#Place"))
+    }
+
+    "keep the declared id, name and prefixes over the given defaults" in {
+      val schema = parseWithDefaults(
+        """id: https://example.org/schema
+          |name: schema
+          |prefixes:
+          |  this: https://example.org/this/
+          |  ex: https://example.org/
+          |default_prefix: ex
+          |classes:
+          |  Person:
+          |    class_uri: Person
+          |  Place:
+          |    class_uri: this:Place
+          |""".stripMargin,
+      )
+      schema.id shouldBe Uri("https://example.org/schema")
+      schema.name shouldBe "schema"
+      schema.defaultPrefix shouldBe Some("ex")
+      schema.prefixes("this").prefixReference shouldBe Uri("https://example.org/this/")
+      schema.classes("Person").classUri shouldBe Some(Uri("https://example.org/Person"))
+      schema.classes("Place").classUri shouldBe Some(Uri("https://example.org/this/Place"))
+    }
+
+    def parseWithDefaults(content: String): SchemaDefinition = parseYaml(content) match {
+      case Right(node) =>
+        SchemaCodec.decode(
+          node,
+          id = "urn:model:a",
+          name = "123",
+          defaultPrefix = Some(Prefix("this", Uri("urn:model:a#"))),
+        )
+      case Left(err) => throw err
+    }
+
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))
 
     def parse(content: String): SchemaDefinition = parseYaml(content) match {
