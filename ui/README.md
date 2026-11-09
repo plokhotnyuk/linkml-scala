@@ -14,7 +14,7 @@ A module imports only from itself or the ones above it in this list, so there ar
 - `state.ts`: what the playground is set to.
 - `worker/`: the worker, which holds the Scala.js bundle, and its messages.
 - `output/`: the output panel and its views.
-- `chrome/`: the page around the playground: theme, help, version, GitHub stars. As in UI chrome, not the browser.
+- `chrome/`: the page around the playground: theme, help, version, GitHub stars, the divider between the panels. As in UI chrome, not the browser.
 - `generation.ts`: sends the input to the worker and shows the result.
 - `input/`: the input pane and where its document comes from.
 - `toolbar/`: the direction, the generator or importer picker and the options.
@@ -22,4 +22,4 @@ A module imports only from itself or the ones above it in this list, so there ar
 
 To call something further down the list, a module exports a hook, such as `onPageChanged` in `output/page-view.ts`, and `main.ts` fills it in.
 
-Most modules wire up their elements when first imported. `main.ts` imports `chrome/help.ts`, `chrome/repo-stats.ts` and `chrome/theme.ts` only for that.
+Most modules wire up their elements when first imported. `main.ts` imports `chrome/help.ts`, `chrome/repo-stats.ts`, `chrome/splitter.ts` and `chrome/theme.ts` only for that.

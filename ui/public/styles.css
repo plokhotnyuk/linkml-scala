@@ -721,13 +721,58 @@ body { background: var(--bg); }
 
 /* ── Split panels ── */
 
+/* The input's and the output's shares of the width are set by splitter.ts. The divider between
+   them stands in for a gap. */
 .split {
+  --split-input: 1fr;
+  --split-output: 1fr;
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: minmax(0, var(--split-input)) 14px minmax(0, var(--split-output));
+  grid-template-rows: minmax(0, 1fr);
 }
+/* With one panel hidden, the other one takes the whole width, and the divider stays at the edge. */
+.split--input-only .panel-output,
+.split--output-only .panel-input { display: none; }
+.panel-input { grid-column: 1; grid-row: 1; }
+.panel-output { grid-column: 3; grid-row: 1; }
+
+.splitter {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: col-resize;
+  /* Stops a drag on a touch screen from scrolling the page instead. */
+  touch-action: none;
+  user-select: none;
+  border-radius: var(--radius-sm);
+}
+.splitter:hover,
+.splitter:focus-visible,
+.splitter--dragging { background: var(--accent-soft); }
+.splitter:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.splitter-btn {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.splitter-btn:hover { background: var(--tag-bg); color: var(--text); }
+.splitter-btn .ic { width: 10px; height: 10px; }
+/* There is nowhere further to go in the direction a hidden panel already went. */
+.split--output-only #splitterToOutput,
+.split--input-only #splitterToInput { display: none; }
 
 .panel {
   min-height: 0;
@@ -1021,7 +1066,16 @@ body { background: var(--bg); }
 .md-page tr:nth-child(2n) td { background: var(--surface); }
 
 @media (max-width: 900px) {
-  .split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  /* The panels are stacked, so the divider runs across and its triangles point up and down. */
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, var(--split-input)) 14px minmax(0, var(--split-output));
+  }
+  .panel-input { grid-column: 1; grid-row: 1; }
+  .splitter { grid-column: 1; grid-row: 2; flex-direction: row; cursor: row-resize; }
+  .panel-output { grid-column: 1; grid-row: 3; }
+  .splitter-btn { width: 22px; height: 14px; }
+  .splitter-btn .ic { transform: rotate(90deg); }
   .toolbar-right { margin-left: 0; }
 }
 
@@ -1077,7 +1131,8 @@ body { background: var(--bg); }
   .settings-panel .opt-field { flex-wrap: wrap; white-space: normal; }
   .settings-panel .opt-field input[type="text"] { max-width: 100%; }
   .auto-toggle { padding: 0; }
-  .split { gap: 8px; }
+  .split { grid-template-rows: minmax(0, var(--split-input)) 12px minmax(0, var(--split-output)); }
+  .splitter-btn { height: 12px; }
   .panel { border-radius: 0; }
   .panel-head { padding: 6px 12px; }
 

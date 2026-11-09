@@ -3,6 +3,7 @@ import { importerById } from "./catalog/importers.js";
 import { DEFAULT_TARGET_ID, targetById } from "./catalog/targets.js";
 import "./chrome/help.js";
 import "./chrome/repo-stats.js";
+import "./chrome/splitter.js";
 import "./chrome/theme.js";
 import { scheduleGenerate, startWorker } from "./generation.js";
 import { inputDoc } from "./input/documents.js";
