@@ -82,8 +82,11 @@ final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {
     ErDiagramGenerator().serialize(decode[ErDiagramGeneratorOptions](params))
 
   def docs(params: Params = js.undefined): js.Dictionary[String] =
-    DocsGenerator().generateFiles(decode[DocsGeneratorOptions](params))
+    docsGenerator.generateFiles(decode[DocsGeneratorOptions](params))
       .map(_.toTuple).toMap.toJSDictionary
+
+  // Kept, so that writing one page at a time with `only_file` prepares the pages only once
+  private lazy val docsGenerator = DocsGenerator()
 
   def ossie(params: Params = js.undefined): String =
     LinkMlJsApi.converting(OssieGenerator().serialize(decode[OssieGeneratorOptions](params)))

@@ -8,6 +8,8 @@ export interface DocsGeneratorOptions {
    * @defaultValue "en"
    */
   metadata_language?: string;
+  /** Write only the file with this path, such as `index.md` or `classes/person.md`, instead of all of them. Writing one page of a large schema is much faster than writing all of them. A path that is not one of the files gives no files. */
+  only_file?: string;
   /**
    * The elements of the schema to include in the output.
    * @defaultValue "schema"
@@ -464,7 +466,7 @@ export type TypeScriptErrorHandling =
 
 /** The functions of the `generator` schema. */
 export interface GeneratorFunctions {
-  /** Generate Markdown documentation. The files are `index.md` plus a page for each class, slot, enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`. */
+  /** Generate Markdown documentation. The files are `index.md` plus a page for each class, slot, enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`. With `only_file`, only that one file. */
   docs(params?: DocsGeneratorOptions): Files;
 
   /** Generate a Mermaid entity relationship diagram. Classes become entities, slots ranging over types and enums become their attributes, and slots ranging over classes become relationship lines. */

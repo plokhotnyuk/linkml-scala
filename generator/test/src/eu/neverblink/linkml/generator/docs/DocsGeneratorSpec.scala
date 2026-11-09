@@ -114,6 +114,39 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "write only the file that only_file names, as it is among all the files" in {
+      ModelCatalogue.all.foreach { entry =>
+        withClue(s"${entry.name}: ") {
+          files(entry.model).foreach { (path, content) =>
+            files(entry.model, DocsGeneratorOptions(onlyFile = Some(path))) shouldBe
+              Map(path -> content)
+          }
+        }
+      }
+    }
+
+    "write each page alone as it is among all the files, with one generator and other options" in {
+      val sv = ModelCatalogue.inheritance.model
+      val generator = DocsGenerator(using sv)
+      for (mode <- Seq(PruningMode.Schema, PruningMode.Skip, PruningMode.Schema)) {
+        val options = DocsGeneratorOptions(pruningMode = mode)
+        files(sv, options).foreach { (path, content) =>
+          generator.generateFiles(options.copy(onlyFile = Some(path))).map(_.toTuple).toMap shouldBe
+            Map(path -> content)
+        }
+      }
+    }
+
+    "write nothing when only_file names no file" in {
+      val sv = ModelCatalogue.inheritance.model
+      files(sv, DocsGeneratorOptions(onlyFile = Some("classes/nothing.md"))) shouldBe empty
+      files(sv, DocsGeneratorOptions(onlyFile = Some("docs.md"))) shouldBe empty
+      files(sv, DocsGeneratorOptions(singleFile = true, onlyFile = Some("docs.md"))).keySet shouldBe
+        Set("docs.md")
+      files(sv, DocsGeneratorOptions(singleFile = true, onlyFile = Some("index.md"))) shouldBe
+        empty
+    }
+
     "name the path and the content of each file" in {
       val index = DocsGenerator(using ModelCatalogue.inheritance.model).generateFiles().head
       index.path shouldBe "index.md"

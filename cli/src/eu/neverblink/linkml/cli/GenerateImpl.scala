@@ -21,9 +21,11 @@ import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
+import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
+import java.nio.charset.StandardCharsets
 
 // Scala
 
@@ -424,23 +426,35 @@ object Docs extends SplitGenerate[DocsOptions] {
   override protected def singleFileExtension: String = ".md"
 
   /** The pages in the folders of each kind of element that start with the generated header, so that
-    * the pages of elements no longer in the schema do not linger. Other files are kept.
+    * the pages of elements no longer in the schema do not linger. Other files are kept. None when
+    * only one page is written, as the others are still up to date.
     */
-  override protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] =
-    DocsSite.PageKind.values.toSeq.flatMap { kind =>
-      val folder = dir / kind.dir
-      if (os.isDir(folder))
-        os.list(folder).filter { file =>
-          os.isFile(file) && file.ext == "md" &&
-          os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "<!--"))
-        }
-      else Nil
-    }
+  override protected[cli] def staleFiles(options: DocsOptions, dir: os.Path): Iterable[os.Path] =
+    if (options.generator.onlyFile.isDefined) Nil
+    else
+      DocsSite.PageKind.values.toSeq.flatMap { kind =>
+        val folder = dir / kind.dir
+        if (os.isDir(folder))
+          os.list(folder).filter { file =>
+            os.isFile(file) && file.ext == "md" &&
+            os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "<!--"))
+          }
+        else Nil
+      }
 
   override protected[cli] def generateSingle(options: DocsOptions, out: OutputStream)(using
       SchemaView,
-  ): Unit =
-    DocsGenerator().writeTo(out, options.generator.toOptions)
+  ): Unit = {
+    val generatorOptions = options.generator.toOptions
+    generatorOptions.onlyFile match {
+      // One page of the folder layout, which is a document of its own
+      case Some(path) if path != "docs.md" =>
+        val page = DocsGenerator().generateFiles(generatorOptions.copy(singleFile = false))
+          .headOption.getOrElse(throw SchemaConversionException(s"There is no page $path."))
+        out.write(page.content.getBytes(StandardCharsets.UTF_8))
+      case _ => DocsGenerator().writeTo(out, generatorOptions)
+    }
+  }
 
   override protected[cli] def generateFiles(options: DocsOptions)(using
       SchemaView,

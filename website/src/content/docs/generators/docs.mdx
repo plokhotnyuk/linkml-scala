@@ -35,8 +35,13 @@ To get one document instead, with the pages as sections that link to each other 
 `.md` file in `--to`, or leave `--to` out to write to stdout. The other SDKs return the pages as a
 map from file name to content, which with `single_file` has only `docs.md`.
 
-The [playground](https://linkml.ohi.dev/playground/) has a Documentation target. It shows
-the documentation as one page, as GitHub would show it. The Code tab shows the Markdown.
+To write only one page, name it in `only_file`, such as `classes/person.md`. For a large schema
+this is much faster than writing all the pages. With `--to` set to a folder, the other pages in it
+are kept as they are.
+
+The [playground](https://linkml.ohi.dev/playground/) has a Documentation target. It shows one page
+at a time, starting at the index, and its links lead to the other pages. The Home button goes back
+to the index, and the Code tab shows the Markdown of the page.
 
 ## Options
 

@@ -37,6 +37,9 @@ import scala.collection.mutable
   *   - [[writeTo]] and [[serialize]] write the same pages as sections of one document, which link
   *     to each other with anchors.
   *
+  * With [[DocsGeneratorOptions.onlyFile]], [[generateFiles]] writes only that one file, which for a
+  * large schema is much faster than writing all of them.
+  *
   * Descriptions are Markdown and are copied to the pages as they are.
   *
   * To add sections to the pages, such as diagrams, extend this class and override [[indexSections]]
@@ -71,7 +74,8 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
   /** The documentation as `index.md` plus one file for each documented element, as pairs of file
     * path and content. Paths are relative to the output folder and use `/`. With
-    * [[DocsGeneratorOptions.singleFile]], it is only `docs.md`, with what [[serialize]] gives.
+    * [[DocsGeneratorOptions.singleFile]], it is only `docs.md`, with what [[serialize]] gives. With
+    * [[DocsGeneratorOptions.onlyFile]], it is only that file, or nothing if there is no such file.
     *
     * @param options
     *   What to document. See [[DocsGeneratorOptions]].
@@ -79,8 +83,41 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
   def generateFiles(
       options: DocsGeneratorOptions = DocsGeneratorOptions(),
   ): Seq[(path: String, content: String)] =
-    if (options.singleFile) Seq((path = "docs.md", content = serialize(options)))
-    else pageFiles(options)
+    if (options.singleFile) {
+      if (options.onlyFile.forall(_ == "docs.md"))
+        Seq((path = "docs.md", content = serialize(options)))
+      else Nil
+    } else options.onlyFile.foldFast(pageFiles(options))(pageFile(options, _))
+
+  /** The site and the writer of the last options that [[pageFile]] was called with, other than
+    * [[DocsGeneratorOptions.onlyFile]]. Making them takes a pass over the whole schema, and writing
+    * one page takes much less, so a caller that writes one page at a time, such as the playground,
+    * keeps one generator and gets them made only once. Two threads that share a generator may both
+    * make them, but never get the ones of other options.
+    */
+  @volatile private var prepared: (DocsGeneratorOptions, DocsSite, PageWriter) = null
+
+  /** The file at [[path]] alone, if there is one. */
+  private def pageFile(
+      options: DocsGeneratorOptions,
+      path: String,
+  ): Seq[(path: String, content: String)] = {
+    val key = options.copy(onlyFile = None)
+    val last = prepared
+    val (site, writer) =
+      if ((last ne null) && last._1 == key) (last._2, last._3)
+      else {
+        val site = new DocsSite(key.pruning, singleFile = false)
+        val writer = new PageWriter(site, key)
+        prepared = (key, site, writer)
+        (site, writer)
+      }
+    if (path == "index.md") Seq((path = path, content = render(md => writer.index(md))))
+    else
+      site.elementAt(path).foldFast(Nil) { el =>
+        Seq((path = path, content = render(md => writer.element(md, el, site.pageOf(el).get))))
+      }
+  }
 
   private def pageFiles(options: DocsGeneratorOptions): Seq[(path: String, content: String)] = {
     val site = new DocsSite(options.pruning, singleFile = false)

@@ -18,7 +18,7 @@ import {
   type SchemaStats,
   type SchemaValidationReport,
 } from "./targets.js";
-import type { PagePatch } from "./markdown.js";
+import { isPageLink, resolvePageLink } from "./markdown.js";
 import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
 import type { CatalogClient, Format as OhiFormat, Publication, SearchHit } from "@neverblink/ohi";
 
@@ -105,14 +105,12 @@ let diagramTab: "diagram" | "code" = "diagram";
 let diagramSource: string | null = null;
 // Which half of the documentation target is showing, sticky like `diagramTab`.
 let pageTab: "page" | "code" = "page";
-// The Markdown currently on screen. Non-null exactly while the page view is up.
+// The page of the Docs target to show, such as `index.md` or `classes/person.md`. Kept while the
+// schema is edited, and back to the index when another schema is put in the input.
+let pagePath = "index.md";
+// The page that the page view shows, and its Markdown. Non-null exactly while the page view is up.
+let shownPagePath: string | null = null;
 let pageSource: string | null = null;
-// The sections that the page view shows, by key, with the revision of each (see `PagePatch`). They
-// are kept while the Code tab is showing, so going back to the Page tab does not render them again.
-let pageSections = new Map<string, { el: HTMLElement; rev: number }>();
-// The newest revision of `pageSections`, which the next request for the Docs target asks with, so
-// that the worker sends only the sections that are newer.
-let pageRev = 0;
 // Where the page view is scrolled to, and where to scroll it when it is shown again. It is kept up
 // to date by the `scroll` listener of the page view, because reading `scrollTop` when the page has
 // changed makes the browser lay out the page first.
@@ -184,6 +182,13 @@ function inputDoc(): InputDoc {
   });
 }
 
+/** Put `text` in the input editor as another document, rather than as an edit of the one shown. */
+function setInput(text: string): void {
+  setDoc(inputView, text);
+  // Another schema has other pages.
+  pagePath = "index.md";
+}
+
 /** Which document the editor is showing, so that switching target within one direction does not
  * needlessly replace it. */
 let shownInput = "";
@@ -192,7 +197,7 @@ function swapInput(): void {
   const key = inputKey();
   if (key === shownInput) return;
   shownInput = key;
-  setDoc(inputView, inputDoc().text);
+  setInput(inputDoc().text);
   syncLinkParams();
 }
 
@@ -645,11 +650,26 @@ const $outputHead = $outputPanel.querySelector<HTMLElement>(".panel-head")!;
 /** Whether the tab bar holds a pair of views, rather than a generator's files. */
 let tabsAreViews = false;
 
+// The button back to the index, at the start of the tab bar, or on a phone beside the Page/Code
+// switch (see `placeFileTabs`).
+const $pageHome = document.createElement("button");
+$pageHome.className = "page-home";
+$pageHome.title = "Back to the index";
+$pageHome.setAttribute("aria-label", "Back to the index");
+$pageHome.hidden = true;
+$pageHome.innerHTML =
+  '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>';
+$pageHome.addEventListener("click", () => showDocsPage(INDEX_PAGE));
+
 function placeFileTabs(): void {
   const inHead = tabsAreViews && narrowLayout.matches;
   $fileTabs.classList.toggle("file-tabs--switch", inHead);
   const after = inHead ? $outputHead.querySelector(".panel-title")! : $outputHead;
   if ($fileTabs.previousElementSibling !== after) after.after($fileTabs);
+  // The page view's button back to the index is not one of the two views, so on a phone it goes
+  // beside the switch rather than in it.
+  if (inHead) $fileTabs.before($pageHome);
+  else $fileTabs.prepend($pageHome);
 }
 narrowLayout.addEventListener("change", placeFileTabs);
 
@@ -999,26 +1019,35 @@ async function renderDiagram(text: string): Promise<void> {
 
 // ── Documentation page view ─────────────────────────────────────────────────
 
+/** The page of the Docs target that the page view starts at. */
+const INDEX_PAGE = "index.md";
+
+/** Ask for the page `path` of the Docs target, which the page view then shows. */
+function showDocsPage(path: string): void {
+  pagePath = path;
+  scheduleGenerate(0);
+}
+
 function hidePage(): void {
   $pageView.hidden = true;
   $pageView.innerHTML = "";
+  $pageHome.hidden = true;
   pageSource = null;
-  pageSections = new Map();
-  pageRev = 0;
+  shownPagePath = null;
   pageScrollTop = 0;
   pageOutputBehind = false;
   $outputEditorHost.hidden = false;
 }
 
-/** Show the Markdown `text` as a page, behind a Page/Code tab pair sharing the file tab bar. `patch`
- * has the sections of `text` that the page view does not show yet. */
-function showPage(text: string, patch: PagePatch): void {
+/** Show the page `path` of the Docs target, with the Markdown `text` and the HTML `html`, behind a
+ * Page/Code tab pair sharing the file tab bar. `html` is null if the documentation has no such
+ * page. */
+function showPage(path: string, text: string, html: string | null): void {
   hideReport();
   hideDiagram();
   hideStats();
   outputView.dom.classList.remove("cm-output--error");
 
-  setTabsAreViews(true);
   $fileTabs.hidden = false;
   $fileTabs.innerHTML = "";
   for (const [tab, label] of [["page", "Page"], ["code", "Code"]] as const) {
@@ -1028,56 +1057,30 @@ function showPage(text: string, patch: PagePatch): void {
     btn.addEventListener("click", () => {
       if (pageTab === tab) return;
       pageTab = tab;
-      for (const other of $fileTabs.children) other.classList.toggle("file-tab--active", other === btn);
+      for (const other of $fileTabs.querySelectorAll(".file-tab")) {
+        other.classList.toggle("file-tab--active", other === btn);
+      }
       showPageTab();
     });
     $fileTabs.appendChild(btn);
   }
+  // After the tabs, as it puts the Home button among them.
+  setTabsAreViews(true);
+  $pageHome.hidden = false;
+  $pageHome.disabled = path === INDEX_PAGE;
 
-  // A new schema starts at the top, as `hidePage` sets `pageScrollTop` to 0. The same schema
-  // regenerated, as while typing, keeps its place.
+  // Another page starts at the top. The same page regenerated, as while typing, keeps its place.
+  if (path !== shownPagePath) pageScrollTop = 0;
+  shownPagePath = path;
   pageSource = text;
   pageOutputBehind = true;
-  // Also while the Code tab is showing, as the hidden page is not laid out.
-  if (!applyPage(patch)) return;
-  showPageTab();
-}
-
-/** Make the page view show the sections of `patch`, in its order. Each section that is new, or has
- * a newer revision, gets its HTML from `patch`. Returns false if `patch` lacks the HTML of one of
- * them, which should not happen: then the page is emptied, and the whole page asked for again. */
-function applyPage(patch: PagePatch): boolean {
-  const next = new Map<string, { el: HTMLElement; rev: number }>();
-  // The section that the next one goes after, or null for the first one
-  let previous: HTMLElement | null = null;
-  for (let i = 0; i < patch.keys.length; i++) {
-    const key = patch.keys[i]!;
-    const rev = patch.revs[i]!;
-    let section = pageSections.get(key);
-    if (section?.rev !== rev) {
-      const html = patch.html.get(key);
-      if (html === undefined) {
-        hidePage();
-        scheduleGenerate(0);
-        return false;
-      }
-      const el = section?.el ?? document.createElement("section");
-      el.className = "md-section";
-      // The height that the section is laid out with until it is shown (see styles.css)
-      el.style.setProperty("--md-lines", String(patch.lines.get(key) ?? 1));
-      // The HTML is safe to show as it is (see markdown.ts).
-      el.innerHTML = html;
-      section = { el, rev };
-    }
-    next.set(key, section);
-    const at: ChildNode | null = previous === null ? $pageView.firstChild : previous.nextSibling;
-    if (section.el !== at) $pageView.insertBefore(section.el, at);
-    previous = section.el;
+  if (html === null) {
+    $pageView.replaceChildren(errorNotice("This documentation has no such page", path));
+  } else {
+    // The HTML is safe to show as it is (see markdown.ts).
+    $pageView.innerHTML = html;
   }
-  for (const [key, section] of pageSections) if (!next.has(key)) section.el.remove();
-  pageSections = next;
-  pageRev = patch.rev;
-  return true;
+  showPageTab();
 }
 
 /** Call `then` once the output editor is in view, or after 30 frames if it isn't by then.
@@ -1111,10 +1114,9 @@ function showPageTab(): void {
   }
 
   $outputEditorHost.hidden = true;
-  if (!$pageView.hidden) return;
   $pageView.hidden = false;
-  // A hidden element loses where it was scrolled to.
-  if (pageScrollTop > 0) $pageView.scrollTop = pageScrollTop;
+  // A hidden element loses where it was scrolled to, and a new page starts at the top.
+  $pageView.scrollTop = pageScrollTop;
 }
 
 $pageView.addEventListener(
@@ -1125,50 +1127,23 @@ $pageView.addEventListener(
   { passive: true },
 );
 
-// Links between sections are anchors. Scroll the panel to them, rather than letting the browser
-// change the playground's own address.
+// Show the pages that links lead to in the page view, and scroll it to the anchors that links
+// within a page lead to, rather than letting the browser change the playground's own address.
 $pageView.addEventListener("click", (e) => {
   const link = (e.target as Element).closest("a");
   const href = link?.getAttribute("href");
-  if (!href?.startsWith("#")) return;
-  e.preventDefault();
-  const id = decodeURIComponent(href.slice(1));
-  const target = id ? $pageView.querySelector(`[id="${CSS.escape(id)}"]`) : null;
-  if (target) scrollPageTo(target);
-  else $pageView.scrollTop = 0;
+  if (!href) return;
+  if (isPageLink(href)) {
+    e.preventDefault();
+    showDocsPage(resolvePageLink(shownPagePath ?? INDEX_PAGE, href));
+  } else if (href.startsWith("#")) {
+    e.preventDefault();
+    const id = decodeURIComponent(href.slice(1));
+    const target = id ? $pageView.querySelector(`[id="${CSS.escape(id)}"]`) : null;
+    if (target) target.scrollIntoView({ block: "start" });
+    else $pageView.scrollTop = 0;
+  }
 });
-
-/** Scrolls the page view to `target`.
- *
- * The browser lays out only the sections near the visible part of the page (see `.md-section` in
- * styles.css). So once it has scrolled, the sections around `target` are laid out, and those above it
- * can grow and push it down, which in Chrome happens two or three frames later. Scroll to it again
- * until it stays in place for five frames, unless the user scrolls first. */
-function scrollPageTo(target: Element): void {
-  target.scrollIntoView({ block: "start" });
-  let top = target.getBoundingClientRect().top;
-  let stillFrames = 0;
-  let frames = 0;
-  let userScrolled = false;
-  const stop = () => {
-    userScrolled = true;
-  };
-  const inputs = ["wheel", "touchstart", "keydown", "pointerdown"];
-  for (const input of inputs) $pageView.addEventListener(input, stop, { once: true, passive: true });
-  const check = () => {
-    if (userScrolled) return;
-    const now = target.getBoundingClientRect().top;
-    if (now === top) stillFrames++;
-    else {
-      stillFrames = 0;
-      target.scrollIntoView({ block: "start" });
-      top = target.getBoundingClientRect().top;
-    }
-    if (stillFrames < 5 && ++frames < 60) requestAnimationFrame(check);
-    else for (const input of inputs) $pageView.removeEventListener(input, stop);
-  };
-  requestAnimationFrame(check);
-}
 
 // ── Statistics view ─────────────────────────────────────────────────────────
 
@@ -1669,7 +1644,7 @@ function runGenerate(): void {
     input,
     stepId: step.id,
     options: optionValues[activeKey()]!,
-    pageRev,
+    page: pagePath,
   };
   getWorker().postMessage(request);
 }
@@ -1697,7 +1672,7 @@ function onResult(res: ConvertResponse): void {
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else if (res.kind === "page") {
-    showPage(res.result as string, res.page!);
+    showPage(res.page!.path, res.result as string, res.page!.html);
   } else if (res.kind === "stats") {
     showStats(res.result as SchemaStats);
   } else {
@@ -1722,7 +1697,8 @@ function breakdown(res: Extract<ConvertResponse, { ok: true }>, displayMs: numbe
     parts.push(`convert ${res.genMs}ms`);
   } else {
     parts.push(res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`);
-    if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+    if (res.page?.cached) parts.push("page cached");
+    else if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
     if (res.htmlMs !== undefined) parts.push(`HTML ${res.htmlMs}ms`);
   }
   parts.push(`display ${displayMs}ms`);
@@ -1782,7 +1758,7 @@ $generateBtn.addEventListener("click", () => scheduleGenerate(0));
 // Lets the change listener do the storing: it already writes to the key the active document
 // belongs to. So does loading an example, further down.
 $clearInput.addEventListener("click", () => {
-  setDoc(inputView, "");
+  setInput("");
   localStorage.removeItem(storageKey(inputKey()));
   inputView.focus();
   scheduleGenerate(0);
@@ -1986,7 +1962,7 @@ async function loadFromUrl(
   doc.remote = text;
   doc.link = link;
   doc.ohi = ohi;
-  setDoc(inputView, text);
+  setInput(text);
   setLinkParams(doc);
   scheduleGenerate(0);
   return { ok: true };
@@ -2020,7 +1996,7 @@ function openLoadDialog(): void {
 $loadFrom.addEventListener("click", openLoadDialog);
 
 $("exampleSubmit").addEventListener("click", () => {
-  setDoc(inputView, exampleInput());
+  setInput(exampleInput());
   scheduleGenerate(0);
   $loadDialog.close();
 });
@@ -2531,7 +2507,7 @@ async function applySharedState(encoded: string): Promise<LoadResult> {
     doc.link = null;
     doc.remote = null;
     doc.ohi = null;
-    setDoc(inputView, state.s ?? "");
+    setInput(state.s ?? "");
     scheduleGenerate(0);
   }
   return { ok: true };

@@ -113,6 +113,21 @@ final class DocsSite private[docs] (pruning: Pruning, singleFile: Boolean)(using
     case _ => None
   }
 
+  /** The documented element whose page has the path [[path]], as in [[Page.path]]. */
+  def elementAt(path: String): Option[ElementView[?, ?]] = elementsByPath.get(path)
+
+  private lazy val elementsByPath: Map[String, ElementView[?, ?]] = {
+    val elements = Map.newBuilder[String, ElementView[?, ?]]
+    def addAll(views: Seq[ElementView[?, ?]]): Unit =
+      views.foreach(el => pageOf(el).foreachFast(page => elements.addOne((page.path, el))))
+    addAll(classes)
+    addAll(slots)
+    addAll(enums)
+    addAll(types)
+    addAll(functions)
+    elements.result()
+  }
+
   /** The page about the top-level slot named [[name]], if it is documented. */
   private[docs] def slotPage(name: String): Option[Page] = slotPages.get(name)
 

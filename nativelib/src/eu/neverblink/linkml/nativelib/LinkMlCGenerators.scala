@@ -17,7 +17,8 @@ object LinkMlCGenerators {
 
   /** Generate Markdown documentation. The files are `index.md` plus a page for each class, slot,
     * enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.
-    * Returns JSON. Options: `metadata_language`, `pruning_mode`, `single_file`, `tree_root`.
+    * With `only_file`, only that one file. Returns JSON. Options: `metadata_language`, `only_file`,
+    * `pruning_mode`, `single_file`, `tree_root`.
     */
   @exported("linkml_docs")
   def docs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

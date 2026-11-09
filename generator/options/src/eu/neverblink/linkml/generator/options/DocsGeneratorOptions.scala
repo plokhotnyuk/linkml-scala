@@ -10,6 +10,10 @@ import eu.neverblink.linkml.runtime.*
   * @param metadataLanguage
   *   The language of the titles and descriptions in the output, for schemas with text in more than
   *   one language.
+  * @param onlyFile
+  *   Write only the file with this path, such as `index.md` or `classes/person.md`, instead of all
+  *   of them. Writing one page of a large schema is much faster than writing all of them. A path
+  *   that is not one of the files gives no files.
   * @param pruningMode
   *   The elements of the schema to include in the output.
   * @param singleFile
@@ -25,6 +29,8 @@ final case class DocsGeneratorOptions(
     @named("metadata_language")
     @serializeDefault
     metadataLanguage: String = "en",
+    @named("only_file")
+    onlyFile: Option[String] = None,
     @named("pruning_mode")
     @serializeDefault
     pruningMode: PruningMode = PruningMode.Schema,

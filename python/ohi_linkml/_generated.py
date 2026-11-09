@@ -47,16 +47,21 @@ class Generators:
         self,
         *,
         metadata_language: str = "en",
+        only_file: str | None = None,
         pruning_mode: Literal["tree_root", "schema", "skip"] = "schema",
         single_file: bool = False,
         tree_root: str | None = None,
     ) -> dict[str, str]:
         """Generate Markdown documentation. The files are `index.md` plus a page for each class,
         slot, enum, type and function, such as `classes/<name>.md`, or only `docs.md` with
-        `single_file`.
+        `single_file`. With `only_file`, only that one file.
 
         :param metadata_language: The language of the titles and descriptions in the output, for
             schemas with text in more than one language.
+        :param only_file: Write only the file with this path, such as `index.md` or
+            `classes/person.md`, instead of all of them. Writing one page of a large schema is
+            much faster than writing all of them. A path that is not one of the files gives no
+            files.
         :param pruning_mode: The elements of the schema to include in the output.
         :param single_file: Whether to write all pages as sections of one document, `docs.md`,
             instead of one file for each page.
@@ -66,6 +71,7 @@ class Generators:
         return self._json(
             "linkml_docs",
             metadata_language=metadata_language,
+            only_file=only_file,
             pruning_mode=pruning_mode,
             single_file=single_file,
             tree_root=tree_root,

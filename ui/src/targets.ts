@@ -67,8 +67,9 @@ export interface Target extends Step {
    * as Markdown, behind a Page/Code tab pair. `stats` renders the statistics as tables. */
   view?: "report" | "diagram" | "page" | "stats";
   /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
-   * the multi-MB Scala.js bundle, which the UI thread never loads. */
-  call: (api: LinkMLApi, view: SchemaView, o: OptionValues) => TargetResult;
+   * the multi-MB Scala.js bundle, which the UI thread never loads. For a `page`, `page` is the path
+   * of the page to show, such as `index.md`. */
+  call: (api: LinkMLApi, view: SchemaView, o: OptionValues, page: string) => TargetResult;
 }
 
 /** An importer: some other format in, LinkML out.
@@ -146,10 +147,9 @@ export const TARGETS: Target[] = [
       TREE_ROOT,
       { key: "metadata_language", type: "text", label: "Language", placeholder: "en", title: "Language of titles and descriptions given in more than one language" },
     ],
-    // Always one document: the page view links its sections with anchors, and a file tab per class
-    // would be too many for a real schema.
-    call: (_, v, o) =>
-      v.docs({ ...converterOptions(o), single_file: true })["docs.md"] ?? "",
+    // One page at a time, the one the page view shows: all pages of a large schema at once take
+    // seconds to write and far longer for the browser to show.
+    call: (_, v, o, page) => v.docs({ ...converterOptions(o), only_file: page }),
   },
   {
     id: "erDiagram",

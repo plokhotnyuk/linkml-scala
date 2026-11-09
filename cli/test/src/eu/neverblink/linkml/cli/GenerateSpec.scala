@@ -426,6 +426,51 @@ class GenerateSpec extends AnyWordSpec, Matchers {
         } finally os.remove.all(dir)
       }
 
+      "write only the page that --only-file names, and keep the others" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val site = dir / "site"
+          docs(site)._3 shouldBe 0
+          os.write.over(site / "classes" / "other.md", "edited")
+          val (_, err, code) = withSchemas(1, prunableSchema) { paths =>
+            Docs.runTestCommandWithExitCode(
+              List("generate", "docs", "--only-file", "classes/root.md", "--to", site.toString) ++
+                paths,
+            )
+          }
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          snapshot(site).keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/root.md",
+            "classes/other.md",
+            "types/string.md",
+          )
+          os.read(site / "classes" / "other.md") shouldBe "edited"
+        } finally os.remove.all(dir)
+      }
+
+      "print only the page that --only-file names when there is no --to" in {
+        val (out, err, code) = withSchemas(1, prunableSchema) { paths =>
+          Docs.runTestCommandWithExitCode(
+            List("generate", "docs", "--only-file", "classes/root.md") ++ paths,
+          )
+        }
+        withClue(s"stderr was: $err\n")(code shouldBe 0)
+        out should include("# Class: Root")
+        out should not include "Class: Other"
+        out should not include "<a id="
+      }
+
+      "fail when --only-file names no page" in {
+        val (_, err, code) = withSchemas(1, prunableSchema) { paths =>
+          Docs.runTestCommandWithExitCode(
+            List("generate", "docs", "--only-file", "classes/nothing.md") ++ paths,
+          )
+        }
+        code shouldBe 1
+        err should include("There is no page classes/nothing.md.")
+      }
+
       "write a single document when --to names a .md file" in {
         val dir = os.temp.dir(prefix = "linkml-generate-docs")
         try {

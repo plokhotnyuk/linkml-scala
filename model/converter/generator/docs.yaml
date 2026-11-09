@@ -23,11 +23,18 @@ classes:
         description: >-
           Whether to write all pages as sections of one document, `docs.md`, instead of one file
           for each page.
+      only_file:
+        range: string
+        description: >-
+          Write only the file with this path, such as `index.md` or `classes/person.md`, instead of
+          all of them. Writing one page of a large schema is much faster than writing all of them.
+          A path that is not one of the files gives no files.
 
 functions:
   docs:
     description: >-
       Generate Markdown documentation. The files are `index.md` plus a page for each class, slot,
       enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.
+      With `only_file`, only that one file.
     parameters: DocsGeneratorOptions
     returns: Files

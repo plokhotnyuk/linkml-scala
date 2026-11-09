@@ -57,7 +57,7 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
           writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
         case g: SplitGenerate[T @unchecked] =>
           if (g.writesDirectory(to))
-            writeManyFiles(to, g.generateFiles(options)(using sv), Some(g.staleFiles))
+            writeManyFiles(to, g.generateFiles(options)(using sv), Some(g.staleFiles(options, _)))
           else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
       }
     catch { case NonFatal(e) => err(s"Cannot generate $generatorName from ${inputs.head}", e) }
@@ -125,9 +125,9 @@ abstract class SplitGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Ge
   protected[cli] def generateFiles(options: T)(using sv: SchemaView): Iterable[(String, String)]
 
   /** The files in the destination directory [[dir]] that an earlier run wrote, to delete before the
-    * files are written. None by default.
+    * files of [[options]] are written. None by default.
     */
-  protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] = Nil
+  protected[cli] def staleFiles(options: T, dir: os.Path): Iterable[os.Path] = Nil
 
   /** Whether `--to` corresponds to a directory.
     */

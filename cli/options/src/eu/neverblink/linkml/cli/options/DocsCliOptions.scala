@@ -13,6 +13,10 @@ final case class DocsCliOptions(
       "The language of the titles and descriptions in the output, for schemas with text in more than one language. Default: en",
     )
     metadataLanguage: String = "en",
+    @HelpMessage(
+      "Write only the file with this path, such as `index.md` or `classes/person.md`, instead of all of them. Writing one page of a large schema is much faster than writing all of them. A path that is not one of the files gives no files.",
+    )
+    onlyFile: Option[String] = None,
     @HelpMessage("The elements of the schema to include in the output. Default: schema")
     pruningMode: PruningMode = PruningMode.Schema,
     @HelpMessage(
@@ -29,6 +33,7 @@ final case class DocsCliOptions(
   def toOptions: DocsGeneratorOptions =
     DocsGeneratorOptions(
       metadataLanguage = metadataLanguage,
+      onlyFile = onlyFile,
       pruningMode = pruningMode,
       singleFile = singleFile,
       treeRoot = treeRoot,

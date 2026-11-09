@@ -8,7 +8,7 @@ import {
   type TargetResult,
 } from "./targets.js";
 import type { LinkMLApi, LoadResult } from "./linkml";
-import { PageSections, type PagePatch } from "./markdown.js";
+import { renderMarkdown } from "./markdown.js";
 
 const LINKML_BUNDLE_URL = "./linkml.js";
 
@@ -31,9 +31,8 @@ export interface ConvertRequest {
   /** Target id for `fromLinkml`, importer id for `toLinkml`. The two sets overlap. */
   stepId: string;
   options: OptionValues;
-  /** For the Docs target, the newest revision of the sections that the page view shows, or 0 (see
-   * `PagePatch`). */
-  pageRev?: number;
+  /** For the Docs target, the path of the page to show, such as `index.md` or `classes/person.md`. */
+  page?: string;
 }
 
 /** How the UI should render `result`: as editor text, as the Scala file tabs, as the report view, as
@@ -53,9 +52,10 @@ export type ConvertResponse =
        * which has no schema to parse. */
       loadMs: number | null;
       genMs: number;
-      /** For a `page`, the sections of the Markdown in `result` that the page view needs (see
-       * markdown.ts), and the time spent making their HTML. */
-      page?: PagePatch;
+      /** For a `page`, the page that `result` has the Markdown of, its HTML, and the time spent
+       * making that. The HTML is null, and the Markdown empty, if the documentation has no such
+       * page. */
+      page?: { path: string; html: string | null; cached: boolean };
       htmlMs?: number;
       /** Set when the schema failed to load at all, so the report is a failure rather than a result. */
       fatal?: true;
@@ -91,12 +91,13 @@ apiPromise
 // text actually changes.
 let cachedSchema: { text: string; loaded: LoadResult } | null = null;
 
-// The sections of the last Markdown of the Docs target, so that only the sections that change are
-// turned into HTML again.
-const pageSections = new PageSections();
+// The last pages of the Docs target, with their HTML, so that going back to one shows it straight
+// away. Keyed by the page and the options, and emptied when the schema changes. Oldest first.
+const pageCache = new Map<string, { markdown: string; html: string | null }>();
+const PAGE_CACHE_SIZE = 16;
 
 self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
-  const { id, direction, input: schema, stepId, options, pageRev } = e.data;
+  const { id, direction, input: schema, stepId, options, page = "index.md" } = e.data;
   try {
     const api = await apiPromise;
 
@@ -115,6 +116,7 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
       // Drop the old parse before starting a new one - these are large, and holding both at once
       // is what pushes a big schema over the heap limit.
       cachedSchema = null;
+      pageCache.clear();
       const t0 = performance.now();
       // The empty object is the import map (filename -> YAML). The UI has no extra imports.
       const loaded = api.loadFromString(schema, {});
@@ -133,28 +135,43 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
     const target = targetById(stepId);
     if (!target) throw new Error(`Unknown target: ${stepId}`);
 
+    if (target.view === "page") {
+      const key = JSON.stringify([stepId, options, page]);
+      const cached = pageCache.get(key);
+      if (cached) {
+        // Moved to the end, as the newest
+        pageCache.delete(key);
+        pageCache.set(key, cached);
+        const result = cached.markdown;
+        reply({ id, ok: true, direction, stepId, kind: "page", result, loadMs, genMs: 0, page: { path: page, html: cached.html, cached: true } });
+        return;
+      }
+      const t1 = performance.now();
+      const markdown = (target.call(api, view, options, page) as Record<string, string>)[page];
+      const genMs = Math.round(performance.now() - t1);
+      const t2 = performance.now();
+      const html = markdown === undefined ? null : renderMarkdown(markdown);
+      const htmlMs = Math.round(performance.now() - t2);
+      pageCache.set(key, { markdown: markdown ?? "", html });
+      if (pageCache.size > PAGE_CACHE_SIZE) pageCache.delete(pageCache.keys().next().value!);
+      const result = markdown ?? "";
+      reply({ id, ok: true, direction, stepId, kind: "page", result, loadMs, genMs, page: { path: page, html, cached: false }, htmlMs });
+      return;
+    }
+
     const t1 = performance.now();
-    const result = target.call(api, view, options);
+    const result = target.call(api, view, options, page);
     const genMs = Math.round(performance.now() - t1);
 
     const kind: ResultKind = target.view === "report"
       ? "report"
       : target.view === "diagram"
       ? "diagram"
-      : target.view === "page"
-      ? "page"
       : target.view === "stats"
       ? "stats"
       : typeof result === "object"
       ? "files"
       : "text";
-    if (kind === "page") {
-      const t2 = performance.now();
-      const page = pageSections.update(result as string, pageRev ?? 0);
-      const htmlMs = Math.round(performance.now() - t2);
-      reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs, page, htmlMs });
-      return;
-    }
     reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs });
   } catch (err) {
     reply({ id, ok: false, error: err instanceof Error ? err.toString() : String(err) });

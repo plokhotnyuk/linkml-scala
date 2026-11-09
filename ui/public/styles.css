@@ -868,6 +868,27 @@ body { background: var(--bg); }
   font-weight: 500;
 }
 .file-tabs--switch .file-tab:hover { background: var(--accent-soft); }
+
+/* The page view's button back to the index (see app.ts): first in the tab bar, or beside the switch
+   on a phone. */
+.page-home {
+  appearance: none;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: var(--text-secondary);
+}
+.page-home[hidden] { display: none; }
+.page-home:hover:not(:disabled) { color: var(--text); background: var(--accent-soft); }
+.page-home:disabled { cursor: default; opacity: 0.45; }
+.page-home .ic { width: 15px; height: 15px; }
+/* Beside the switch, it has to leave the Output bar room for its buttons. */
+.panel-head > .page-home { padding: 2px; }
 .file-tabs--switch .file-tab--active,
 .file-tabs--switch .file-tab--active:hover { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
 
@@ -934,15 +955,7 @@ body { background: var(--bg); }
   container-type: inline-size;
 }
 .md-page[hidden] { display: none; }
-.md-section:first-child > :first-child { margin-top: 0; }
-/* The browser lays out only the sections near the visible part of the page. For a large schema the
-   page has hundreds of thousands of elements, and laying them all out takes seconds. A section that
-   has not been laid out yet is as high as its lines of Markdown (`--md-lines`, set by app.ts), or as
-   high as it was when it was last shown. */
-.md-section {
-  content-visibility: auto;
-  contain-intrinsic-size: auto calc(var(--md-lines, 1) * 1.6em);
-}
+.md-page > :first-child { margin-top: 0; }
 .md-page h1,
 .md-page h2,
 .md-page h3,
