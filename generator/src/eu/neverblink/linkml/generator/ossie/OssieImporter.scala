@@ -62,7 +62,6 @@ object OssieImporter {
     BuiltInConcept.float -> "float",
     BuiltInConcept.integer -> "integer",
     BuiltInConcept.string -> "string",
-    BuiltInConcept.any -> "string", // TODO: decide what to do with Any as a type...
   )
 
   private val linkmlNamespace = "https://w3id.org/linkml/"
@@ -70,6 +69,9 @@ object OssieImporter {
   /** The class standing in for Ossie's `Any`, declared only when something actually refers to it.
     */
   private val anyClass = "Any"
+
+  /** The URI that marks an element as LinkML's "anything". */
+  private val anyUri = Uri(linkmlNamespace.concat("Any"))
 
   /** Ossie's `identify_by` key has no name of its own, so a compound key one is named after the
     * field.
@@ -153,12 +155,11 @@ object OssieImporter {
 
     def schema: SchemaDefinition = {
       val classes = entityTypes.map(classOf)
-      // Any class is only declared when something actually refers to it.
-      // TODO: should this be a built-in type/class hybrid instead?
+      // Only a range can refer to Any, and the class is declared only when one does.
       val any = Option.when(
         classes.exists(_.attributes.values.exists(_.range.contains(Reference(anyClass)))) &&
           !classes.exists(_.name == anyClass),
-      )(ClassDefinition(name = anyClass, classUri = Some(Uri(linkmlNamespace.concat("Any")))))
+      )(ClassDefinition(name = anyClass, classUri = Some(anyUri)))
 
       SchemaDefinition(
         id = Uri(schemaId),
@@ -188,7 +189,10 @@ object OssieImporter {
 
     private def classOf(concept: Concept): ClassDefinition = {
       // The generator lists mixins before `is_a`, so the last entry is the one that was `is_a`.
-      val parents = concept.extendsConcepts.map(name => elementNames.getOrElse(name, name))
+      // Extending Any says nothing, so it's omitted.
+      val parents = concept.extendsConcepts
+        .filterNot(_ == BuiltInConcept.any)
+        .map(name => elementNames.getOrElse(name, name))
       val declared = concept.relationships.map(r => r.name -> r).toMap
       val requires = concept.requires.flatMap(Expression.parse)
       val conceptRef = Ref(concept.concept)
@@ -285,12 +289,17 @@ object OssieImporter {
     private def typeOf(concept: Concept): TypeDefinition = {
       val constraints =
         Constraints.from(Ref(concept.concept), concept.requires.flatMap(Expression.parse))
+      // There is no LinkML type for Ossie's Any. We write `base: Any`, which LinkML does not
+      // recognize, and the Ossie generator turns an unrecognized base back into Any.
+      val overAny = concept.extendsConcepts.headOption.contains(BuiltInConcept.any)
       TypeDefinition(
         name = elementNames(concept.concept),
         description = concept.description.map(PlainText.apply),
-        typeUri = concept.iri.map(uriOf),
-        typeof =
-          Some(Reference(concept.extendsConcepts.headOption.map(baseOf).getOrElse("string"))),
+        typeUri = concept.iri.map(uriOf).orElse(Option.when(overAny)(anyUri)),
+        typeof = Option.unless(overAny)(
+          Reference(concept.extendsConcepts.headOption.map(baseOf).getOrElse("string")),
+        ),
+        base = Option.when(overAny)(BuiltInConcept.any),
         minimumValue = constraints.minimumValue,
         maximumValue = constraints.maximumValue,
         pattern = constraints.pattern,

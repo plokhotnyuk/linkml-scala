@@ -686,6 +686,64 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         |    type: EntityType
         """)).classes.keys should not contain "Any"
     }
+
+    "give a value type over it a base LinkML does not know, rather than narrowing it" in {
+      val t = importOf(ossie("""
+        |ontology:
+        |  - concept: Whatever
+        |    type: ValueType
+        |    extends: [Any]
+        """)).types("Whatever")
+      t.typeof shouldBe None
+      t.base shouldBe Some("Any")
+      t.typeUri.map(_.original) shouldBe Some("https://w3id.org/linkml/Any")
+    }
+
+    "keep the iri of a value type over it" in {
+      importOf(ossie("""
+        |prefixes:
+        |  ex: https://example.org/
+        |ontology:
+        |  - concept: Whatever
+        |    type: ValueType
+        |    extends: [Any]
+        |    iri: ex:Whatever
+        """)).types("Whatever").typeUri.map(_.original) shouldBe
+        Some("https://example.org/Whatever")
+    }
+
+    "drop it from an entity type's extends, where it says nothing" in {
+      val cls = importOf(ossie("""
+        |ontology:
+        |  - concept: Thing
+        |    type: EntityType
+        |    extends: [Any]
+        """)).classes("Thing")
+      cls.isA shouldBe None
+      cls.mixins shouldBe empty
+    }
+
+    "produce a schema that has nothing wrong with it" in {
+      reimport(ossie("""
+        |ontology:
+        |  - concept: Whatever
+        |    type: ValueType
+        |    extends: [Any]
+        |  - concept: Thing
+        |    type: EntityType
+        |    extends: [Any]
+        |    identify_by: [key]
+        |    relationships:
+        |      - name: key
+        |        roles: [{concept: Any}]
+        |        multiplicity: OneToOne
+        |        verbalizes: ['{Thing} key {Any}']
+        |      - name: val
+        |        roles: [{concept: Whatever}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} val {Whatever}']
+        """)).validationProblems shouldBe empty
+    }
   }
 
   "identifiers" should {
@@ -741,6 +799,22 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         """)).classes("Person")
       cls.attributes("passport").identifier shouldBe false
       cls.uniqueKeys.values.head.uniqueKeySlots shouldBe Seq(Reference("passport"))
+    }
+
+    "fall back to a unique key when the identifying role is Any" in {
+      val cls = importOf(ossie("""
+        |ontology:
+        |  - concept: Thing
+        |    type: EntityType
+        |    identify_by: [key]
+        |    relationships:
+        |      - name: key
+        |        roles: [{concept: Any}]
+        |        multiplicity: OneToOne
+        |        verbalizes: ['{Thing} key {Any}']
+        """)).classes("Thing")
+      cls.attributes("key").identifier shouldBe false
+      cls.uniqueKeys.values.head.uniqueKeySlots shouldBe Seq(Reference("key"))
     }
 
     "leave an inherited identifier to the supertype that declares it" in {
