@@ -99,16 +99,25 @@ object `package` extends Module, NativeOptional {
       /** Where `ossieRepo` puts the apache/ossie checkout. */
       def ossieDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "ossie-repo"
 
-      /** Clone apache/ossie, so that `OssieIntegrationSpec` also checks the generated ontologies
-        * with the upstream `validation/validate.py`.
+      /** The apache/ossie commit `ossieRepo` checks out. Its validator only accepts its own spec
+        * version, so move this together with `OssieOntology.specVersion`.
+        */
+      def ossieCommit = "21d14d7a4044e71a19ea46d024c974a57323174a"
+
+      /** Check out apache/ossie at [[ossieCommit]], so that `OssieIntegrationSpec` also checks the
+        * generated ontologies with the upstream `validation/validate.py`.
         */
       def ossieRepo(args: String*) = Task.Command(exclusive = true) {
-        if !os.exists(ossieDir) then
-          os.call(
-            ("git", "clone", "--depth=1", "https://github.com/apache/ossie", ossieDir),
-            stdout = os.Inherit,
-            stderr = os.Inherit,
-          )
+        def git(args: String*) =
+          os.call("git" +: args, cwd = ossieDir, stdout = os.Inherit, stderr = os.Inherit)
+        if !os.exists(ossieDir / ".git") then
+          os.makeDir.all(ossieDir)
+          git("init", "--quiet")
+          git("remote", "add", "origin", "https://github.com/apache/ossie")
+        val head = os.call(("git", "rev-parse", "HEAD"), cwd = ossieDir, check = false)
+        if head.exitCode != 0 || head.out.trim() != ossieCommit then
+          git("fetch", "--depth=1", "origin", ossieCommit)
+          git("checkout", "--quiet", "--detach", "FETCH_HEAD")
       }
 
       // Point BenchmarkSchemaSpec, OwlCorpusSpec and RdfsCorpusSpec at the fetched datasets, so

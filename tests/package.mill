@@ -8,10 +8,12 @@ import mill.scalajslib.TestScalaJSModule
 import mill.scalanativelib.TestScalaNativeModule
 
 object `package` extends Module, NativeOptional {
+  // Published for the tests of other projects which use the model catalogue.
   object jvm
       extends ResourcesAsStrings("tests"),
         ModelCatalogueEntries,
-        CommonBuildModule,
+        CommonModule,
+        NoDocs,
         CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.jvm,
