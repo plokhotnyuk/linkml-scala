@@ -1,7 +1,7 @@
 // Tests for markdown.ts. Run with `npm test` (see run.mjs).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addWordBreaks, isPageLink, renderMarkdown, resolvePageLink } from "../src/markdown.js";
+import { addWordBreaks, isPageLink, renderMarkdown, resolvePageLink } from "../src/lib/markdown.js";
 
 test("the first cell of each table row is a name that can go onto more lines", () => {
   const html = renderMarkdown(

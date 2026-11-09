@@ -100,6 +100,21 @@ test("a pair of views is a switch in the Output bar", async ({ page }) => {
   }
 });
 
+test("Copy is left out while a page, a diagram or tables are showing, and back for their code", async ({ page }) => {
+  const head = page.locator("#outputPanel .panel-head");
+  const copy = page.locator("#copyOutput");
+  for (const [target, view] of [["Documentation", "Page"], ["ER diagram", "Diagram"], ["Statistics", "Stats"]]) {
+    await pickTarget(page, target!);
+    await head.getByRole("button", { name: view, exact: true }).click();
+    await expect(copy).toBeHidden();
+    await head.getByRole("button", { name: "Code", exact: true }).click();
+    await expect(copy).toBeVisible();
+    await head.getByRole("button", { name: view, exact: true }).click();
+  }
+  await pickTarget(page, "JSON Schema");
+  await expect(copy).toBeVisible();
+});
+
 test("the help button links to the docs page of what is on screen", async ({ page }) => {
   const help = page.locator("#outputHelp");
   await expect(help).toHaveAttribute("href", "https://linkml.ohi.dev/docs/generators/docs/");

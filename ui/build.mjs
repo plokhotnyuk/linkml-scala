@@ -1,5 +1,5 @@
 // esbuild bundler for the playground UI. Invoked by `npm run build` and by the
-// Mill `ui.bundle`, `ui.check`, `ui.site` and `ui.serve` tasks. Bundles src/app.ts + CodeMirror into
+// Mill `ui.bundle`, `ui.check`, `ui.site` and `ui.serve` tasks. Bundles src/main.ts + CodeMirror into
 // public/dist/app.js and the generation worker into public/dist/worker.js, and minifies the
 // (large, separately built) Scala.js bundle into public/dist/linkml.js.
 import * as esbuild from "esbuild";
@@ -13,11 +13,11 @@ const SCALA_BUNDLE = "../out/generator/js/fullLinkJS.dest/main.js";
 // Everything the browser loads is in public/, served as /playground/ on the site.
 const DIST = "public/dist";
 
-// app.ts is the page; worker.ts is the generation worker it spawns as a sibling
+// main.ts is the page; worker/worker.ts is the generation worker it spawns as a sibling
 // dist/worker.js. The ohi.dev SDK goes into its own dist/ohi.js.
 // All three are emitted into dist/ by outdir.
 const appOptions = {
-  entryPoints: { app: "src/app.ts", worker: "src/worker.ts", ohi: "@neverblink/ohi" },
+  entryPoints: { app: "src/main.ts", worker: "src/worker/worker.ts", ohi: "@neverblink/ohi" },
   bundle: true,
   format: "esm",
   target: "es2020",

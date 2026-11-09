@@ -9,7 +9,7 @@ const marked = new Marked({
     link(token) {
       const html = Renderer.prototype.link.call(this, token);
       // Links within the page start with `#`, and links to other pages of the documentation are
-      // relative paths of Markdown files. app.ts shows both in the page view. Every other link opens
+      // relative paths of Markdown files. page-view.ts shows both in the page view. Every other link opens
       // in a new tab, so the playground keeps the schema being edited.
       return token.href.startsWith("#") || isPageLink(token.href)
         ? html

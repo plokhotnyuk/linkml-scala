@@ -1,8 +1,9 @@
-// Tests for targets.ts. Run with `npm test` (see run.mjs).
+// Tests for the catalog of generators and importers. Run with `npm test` (see run.mjs).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { IMPORTERS, TARGETS } from "../src/targets.js";
+import { IMPORTERS } from "../src/catalog/importers.js";
+import { TARGETS } from "../src/catalog/targets.js";
 
 // npm runs the tests from ui/.
 const DOCS = "../website/src/content/docs";

@@ -1,14 +1,10 @@
 // Conversion worker. Owns the LinkML API, the parsed `SchemaView` and all generator and importer
 // calls.
-import {
-  importerById,
-  targetById,
-  type BuildInfo,
-  type OptionValues,
-  type TargetResult,
-} from "./targets.js";
-import type { LinkMLApi, LoadResult } from "./linkml";
-import { renderMarkdown } from "./markdown.js";
+import { importerById } from "../catalog/importers.js";
+import { targetById } from "../catalog/targets.js";
+import type { LinkMLApi, LoadResult } from "../linkml";
+import { renderMarkdown } from "../lib/markdown.js";
+import type { ConvertRequest, ConvertResponse, ResultKind, WorkerMessage } from "./protocol.js";
 
 const LINKML_BUNDLE_URL = "./linkml.js";
 
@@ -18,57 +14,6 @@ const LINKML_BUNDLE_URL = "./linkml.js";
 // Started at module load so the multi-MB bundle is already parsing while the page renders.
 // Requests that arrive before it resolves simply await it.
 const apiPromise: Promise<LinkMLApi> = import(LINKML_BUNDLE_URL).then((m: { LinkML: LinkMLApi }) => m.LinkML);
-
-/** `fromLinkml` runs a generator over the schema in `input`; `toLinkml` runs an importer over the
- * source document in `input`. */
-export type Direction = "fromLinkml" | "toLinkml";
-
-export interface ConvertRequest {
-  id: number;
-  direction: Direction;
-  /** The LinkML schema, or the document to import. */
-  input: string;
-  /** Target id for `fromLinkml`, importer id for `toLinkml`. The two sets overlap. */
-  stepId: string;
-  options: OptionValues;
-  /** For the Docs target, the path of the page to show, such as `index.md` or `classes/person.md`. */
-  page?: string;
-}
-
-/** How the UI should render `result`: as editor text, as the Scala file tabs, as the report view, as
- * a Mermaid diagram, as a Markdown page, or as the statistics tables. */
-export type ResultKind = "text" | "files" | "report" | "diagram" | "page" | "stats";
-
-export type ConvertResponse =
-  | {
-      id: number;
-      ok: true;
-      /** Both echoed back so the UI renders with what was asked for, not what is selected now. */
-      direction: Direction;
-      stepId: string;
-      kind: ResultKind;
-      result: TargetResult;
-      /** Time spent parsing the schema: null when the cached parse was reused, and for an importer,
-       * which has no schema to parse. */
-      loadMs: number | null;
-      genMs: number;
-      /** For a `page`, the page that `result` has the Markdown of, its HTML, and the time spent
-       * making that. The HTML is null, and the Markdown empty, if the documentation has no such
-       * page. */
-      page?: { path: string; html: string | null; cached: boolean };
-      htmlMs?: number;
-      /** Set when the schema failed to load at all, so the report is a failure rather than a result. */
-      fatal?: true;
-    }
-  | { id: number; ok: false; error: string };
-
-/** Sent once, unprompted, when the bundle finishes loading. Every other message answers a request,
- * so the UI tells the two apart by looking for `build`. */
-export interface BuildMessage {
-  build: BuildInfo;
-}
-
-export type WorkerMessage = ConvertResponse | BuildMessage;
 
 // The UI tsconfig ships the DOM lib rather than webworker, and pulling lib.webworker in here would
 // collide with it. Only these two globals are used, so declare them exactly - which also types

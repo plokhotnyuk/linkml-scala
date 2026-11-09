@@ -638,8 +638,8 @@ body { background: var(--bg); }
   gap: 12px;
 }
 
-/* `contents` rather than `flex`: the options are a group in the markup only, because app.ts
-   refills them wholesale. As a flex item the group would wrap internally and leave the slack on
+/* `contents` rather than `flex`: the options are a group in the markup only, because
+   option-fields.ts refills them wholesale. As a flex item the group would wrap internally and leave the slack on
    its own last line, where the Auto toggle beside it cannot reach - so Auto dropped to a line of
    its own with half the row empty. Dissolving the box puts every control in one wrap context. */
 .options-row { display: contents; }
@@ -847,7 +847,7 @@ body { background: var(--bg); }
 .file-tab:hover { color: var(--text); }
 .file-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
 
-/* A pair of views moved into the Output bar on a phone (see placeFileTabs in app.ts): a two-way
+/* A pair of views moved into the Output bar on a phone (see view-tabs.ts): a two-way
    switch, drawn like the From/To toggle. */
 .file-tabs--switch {
   flex-shrink: 0;
@@ -869,7 +869,7 @@ body { background: var(--bg); }
 }
 .file-tabs--switch .file-tab:hover { background: var(--accent-soft); }
 
-/* The page view's button back to the index (see app.ts): first in the tab bar, or beside the switch
+/* The page view's button back to the index (see page-view.ts): first in the tab bar, or beside the switch
    on a phone. */
 .page-home {
   appearance: none;
@@ -883,7 +883,6 @@ body { background: var(--bg); }
   padding: 4px 8px;
   color: var(--text-secondary);
 }
-.page-home[hidden] { display: none; }
 .page-home:hover:not(:disabled) { color: var(--text); background: var(--accent-soft); }
 .page-home:disabled { cursor: default; opacity: 0.45; }
 .page-home .ic { width: 15px; height: 15px; }
@@ -1032,6 +1031,9 @@ body { background: var(--bg); }
   /* The footer's links and the NeverBlink mark take room the editors need more. */
   .app-footer { display: none; }
   .workspace { padding: 8px 0 10px; gap: 8px; }
+  /* Copy is left out while a page, a diagram or tables are showing rather than their code (see
+     panel.ts), as the Output bar has too much in it. */
+  .panel--visual #copyOutput { display: none; }
   /* The toolbar is one row here: the direction becomes a dropdown, the options and Auto move into
      a popup behind the settings button, and the target picker takes whatever width is left. */
   .toolbar { position: relative; flex-wrap: nowrap; padding: 6px 8px; gap: 8px; border-radius: 0; }

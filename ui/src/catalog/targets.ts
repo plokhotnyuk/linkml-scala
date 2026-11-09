@@ -1,106 +1,13 @@
-// The catalog of everything the playground can run, shared by the UI and the worker: generators
-// that turn a LinkML schema into something else, and importers that go the other way.
+// The generators the playground can run, which turn a LinkML schema into something else, shared by
+// the UI and the worker. The importers, which go the other way, are in importers.ts.
 //
 // The UI thread uses everything here *except* `call` - labels, option widgets and the output
 // language. `call` runs only in the worker, which is the sole owner of the LinkML API and of the
 // `SchemaView` handles it hands out (those are live Scala.js objects and cannot cross a
 // postMessage boundary). Keeping both halves in one file means ids and option keys have a
 // single definition that both sides are type-checked against.
-import type { Format as OhiFormat } from "@neverblink/ohi";
-import type { LinkMLApi, SchemaStats, SchemaValidationReport, SchemaView } from "./linkml";
-import type { OutputLang } from "./editor.js";
-import { EXAMPLE_OSSIE, EXAMPLE_OWL } from "./examples.js";
-
-export interface Option {
-  key: string;
-  type: "checkbox" | "text" | "number" | "select";
-  label: string;
-  title?: string;
-  placeholder?: string;
-  choices?: string[];
-  default?: string | number | boolean;
-  /** Shown only when this holds for the step's current option values. Absent means always shown. */
-  showIf?: (o: OptionValues) => boolean;
-}
-
-export type OptionValues = Record<string, string | number | boolean>;
-
-/** The tree root override, for the generators that only reach it through the pruning mode.
- *
- * Outside the `tree_root` mode the field does nothing, so it is not offered. JSON Schema is the
- * exception: it has no pruning mode and applies its override unconditionally, so it declares a
- * field of its own.
- */
-const TREE_ROOT: Option = {
-  key: "tree_root",
-  type: "text",
-  label: "Tree root",
-  placeholder: "Class name (optional)",
-  showIf: (o) => o.pruning_mode === "tree_root",
-};
-
-/** The validation report types, generated from model/issue-types.yaml into linkml.d.ts. */
-export type { IssueLocation, SchemaIssue, SchemaValidationReport } from "./linkml";
-
-/** The schema statistics, generated from model/schema-stats.yaml into linkml.d.ts. */
-export type { SchemaStats } from "./linkml";
-
-export type TargetResult = string | Record<string, string> | SchemaValidationReport | SchemaStats;
-
-/** The build info, generated from model/build-info.yaml into linkml.d.ts. */
-export type { BuildInfo } from "./linkml";
-
-/** What a [[Target]] and an [[Importer]] have in common: a tab, a set of option widgets and an
- * output language. The UI works in terms of this wherever the direction does not matter. */
-export interface Step {
-  id: string;
-  label: string;
-  docs: string;
-  options: Option[];
-  lang: OutputLang | ((o: OptionValues) => OutputLang);
-}
-
-/** A generator: LinkML in, something else out. */
-export interface Target extends Step {
-  /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`.
-   * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. `page` renders it
-   * as Markdown, behind a Page/Code tab pair. `stats` renders the statistics as tables. */
-  view?: "report" | "diagram" | "page" | "stats";
-  /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
-   * the multi-MB Scala.js bundle, which the UI thread never loads. For a `page`, `page` is the path
-   * of the page to show, such as `index.md`. */
-  call: (api: LinkMLApi, view: SchemaView, o: OptionValues, page: string) => TargetResult;
-}
-
-/** An importer: some other format in, LinkML out.
- *
- * Unlike a generator it never sees a `SchemaView` - there is no LinkML schema yet - so it is handed
- * the input document as text.
- */
-export interface Importer extends Step {
-  /** What the input pane calls the document it wants. */
-  inputLabel: string;
-  /** Starting point for the example in the load dialog. */
-  example: string;
-  /** Which files on ohi.dev this importer can read. When there is more than one, the load dialog
-   * offers a choice between them, and the first is the default. */
-  ohiFormats: OhiChoice[];
-  /** Ids of the generators this undoes, if any. Both directions of each pair get the reverse
-   * button in the output pane. Going back from the importer picks the first one, unless the
-   * generator last used is also on the list. */
-  reverses?: string[];
-  /** How to highlight the input pane. Defaults to YAML. */
-  inputLang?: OutputLang;
-  call: (api: LinkMLApi, input: string, o: OptionValues) => string;
-}
-
-/** A file format on ohi.dev that an input pane can read. `label` names it on the format toggle,
- * `name` in the note on an ontology that has no such file. */
-export interface OhiChoice {
-  format: OhiFormat;
-  label: string;
-  name: string;
-}
+import type { Target } from "./types.js";
+import { converterOptions, TREE_ROOT } from "./options.js";
 
 /** The generator the playground opens with. */
 export const DEFAULT_TARGET_ID = "docs";
@@ -363,70 +270,6 @@ export const TARGETS: Target[] = [
   },
 ];
 
-export const IMPORTERS: Importer[] = [
-  {
-    id: "ossie",
-    label: "Apache Ossie",
-    docs: "importers/ossie/",
-    inputLabel: "Ossie ontology (YAML or JSON)",
-    reverses: ["ossie"],
-    lang: (o) => (o.format === "json" ? "json" : "yaml"),
-    example: EXAMPLE_OSSIE,
-    ohiFormats: [{ format: "ossie-yaml", label: "Ossie", name: "Ossie" }],
-    options: [
-      { key: "schema_id", type: "text", label: "Schema id", placeholder: "https://… (optional)" },
-      { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
-      { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
-    ],
-    call: (api, input, o) => api.fromOssie(input, converterOptions(o)).schema,
-  },
-  {
-    id: "owl",
-    label: "OWL 2 / RDFS",
-    docs: "importers/owl/",
-    inputLabel: "OWL 2 or RDFS ontology (Turtle)",
-    reverses: ["owl", "rdfs"],
-    inputLang: "turtle",
-    lang: (o) => (o.format === "json" ? "json" : "yaml"),
-    example: EXAMPLE_OWL,
-    // The importer reads Turtle only, so the RDF/XML files on ohi.dev are not on offer.
-    ohiFormats: [
-      { format: "owl-turtle", label: "OWL", name: "OWL (Turtle)" },
-      { format: "rdfs-turtle", label: "RDFS", name: "RDFS (Turtle)" },
-    ],
-    options: [
-      {
-        key: "list_not_imported",
-        type: "checkbox",
-        label: "Not imported",
-        title: "List what could not be imported, in comments at the top",
-        showIf: (o) => o.format !== "json",
-      },
-      { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
-      { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
-    ],
-    call: (api, input, o) => {
-      // Not an option of the importer, which always returns the warnings.
-      const { list_not_imported, ...options } = o;
-      const { schema, warnings } = api.fromOwl(input, converterOptions(options));
-      if (!list_not_imported || o.format === "json") return schema;
-      return warnings.map((w) => `# Not imported: ${w}\n`).join("") + schema;
-    },
-  },
-];
-
 export function targetById(id: string): Target | undefined {
   return TARGETS.find((t) => t.id === id);
-}
-
-export function importerById(id: string): Importer | undefined {
-  return IMPORTERS.find((i) => i.id === id);
-}
-
-/** The option values of a generator or importer as its options object, the keys being the names
- * in model/converter. Blank text fields are left out, so they take their defaults. */
-function converterOptions<T>(o: OptionValues): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(o).filter(([, v]) => !(typeof v === "string" && v.trim() === "")),
-  ) as Partial<T>;
 }
