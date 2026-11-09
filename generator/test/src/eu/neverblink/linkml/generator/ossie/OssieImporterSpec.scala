@@ -203,6 +203,17 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
       e.permissibleValues("ALIVE").text shouldBe "ALIVE"
     }
 
+    "make an enum out of a ValueType that allows values with == and OR" in {
+      importOf(ossie("""
+        |ontology:
+        |  - concept: CancelationCode
+        |    type: ValueType
+        |    extends: [String]
+        |    requires:
+        |      - CancelationCode == 'A' OR CancelationCode == 'B' OR CancelationCode == 'C'
+        """)).enums("CancelationCode").permissibleValues.keys.toSeq shouldBe Seq("A", "B", "C")
+    }
+
     "unescape a doubled apostrophe in a permissible value" in {
       importOf(ossie("""
         |ontology:
@@ -320,6 +331,19 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
       attributes("s").range shouldBe Some(Reference("string"))
       attributes("n").range shouldBe Some(Reference("integer"))
       attributes("when").range shouldBe Some(Reference("datetime"))
+    }
+
+    "make the concept the domain, since it plays the first role" in {
+      attributeOf(
+        """
+        |      - name: homepage
+        |        iri: https://example.org/homepage
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} homepage {String}']
+        """,
+        "homepage",
+      ).domain shouldBe Some(Reference("Thing"))
     }
 
     "snake_case the slot name and keep the original as an alias" in {
@@ -553,6 +577,30 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
           "foaf" -> "http://xmlns.com/foaf/0.1/",
           "org" -> "http://www.w3.org/ns/org#",
         )
+    }
+
+    "give a relationship without an iri a URI with its concept in it, as Ossie names it" in {
+      val classes = importOf(ossie("""
+        |ontology:
+        |  - concept: Person
+        |    type: EntityType
+        |    relationships:
+        |      - name: name
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Person} has name {String}']
+        |  - concept: Car
+        |    type: EntityType
+        |    relationships:
+        |      - name: name
+        |        roles: [{concept: Integer}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Car} has name {Integer}']
+        """)).classes
+      classes("Person").attributes("name").slotUri shouldBe
+        Some(Uri("https://example.org/spec/Person.name"))
+      classes("Car").attributes("name").slotUri shouldBe
+        Some(Uri("https://example.org/spec/Car.name"))
     }
 
     "put each iri where LinkML keeps the element's URI, expanding a QName" in {

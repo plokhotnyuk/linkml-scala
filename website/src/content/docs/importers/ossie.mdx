@@ -53,7 +53,7 @@ By default, the importer invents an identifier for the LinkML schema as `https:/
 | Ossie field            | LinkML                                                                                               |
 |------------------------|------------------------------------------------------------------------------------------------------|
 | `name`                 | Slot name in snake_case, original spelling in `alias`.                                               |
-| `iri`                  | `slot_uri`. See [IRIs](#iris).                                                                       |
+| `iri`                  | `slot_uri`. Without one, the schema's namespace followed by `Class.slot`, such as `ex:Person.name`. See [IRIs](#iris). |
 | `verbalizes`           | The phrase becomes the slot `title`, unless it is just the space-cased name. Only the first is read. |
 | `description`          | `description`                                                                                        |
 | `roles`                | The first role's concept is the range. Any others are dropped.                                       |
@@ -82,12 +82,13 @@ The generator maps several LinkML types to one Ossie concept, so a round trip ch
 
 ### Expressions
 
-| Ossie                   | LinkML                           |
-|-------------------------|----------------------------------|
-| `Concept.relationship`  | `required: true`                 |
-| `Ref IN ('a', 'b')`     | `permissible_values`             |
-| `Ref >= v`, `Ref <= v`  | `minimum_value`, `maximum_value` |
-| `REGEXP_LIKE(Ref, 'p')` | `pattern`                        |
+| Ossie                      | LinkML                                     |
+|----------------------------|--------------------------------------------|
+| `Concept.relationship`     | `required: true`                           |
+| `Ref IN ('a', 'b')`        | `permissible_values`                       |
+| `Ref == 'a' OR Ref == 'b'` | `permissible_values`, written back as `IN` |
+| `Ref >= v`, `Ref <= v`     | `minimum_value`, `maximum_value`           |
+| `REGEXP_LIKE(Ref, 'p')`    | `pattern`                                  |
 
 ### IRIs
 

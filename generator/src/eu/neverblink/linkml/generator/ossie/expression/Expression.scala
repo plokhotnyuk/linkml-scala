@@ -27,7 +27,9 @@ private[ossie] object Expression {
     override def render: String = s"${ref.name}.$relationship"
   }
 
-  /** `Ref IN ('a', 'b')` - how an enumerated value type states the values it allows. */
+  /** `Ref IN ('a', 'b')` - how an enumerated value type states the values it allows. Also read from
+    * `Ref == 'a' OR Ref == 'b'`, but always written as `IN`.
+    */
   final case class InList(ref: Ref, values: Seq[Literal.Text]) extends Expression {
     override def render: String =
       s"${ref.name} IN (${values.map(_.render).mkString(", ")})"
@@ -57,7 +59,7 @@ private[ossie] object Expression {
     }
 
   private def expression[$: P]: P[Expression] =
-    P(ws ~ (regexpLike | inList | atLeast | atMost | member) ~ ws ~ End)
+    P(ws ~ (regexpLike | inList | equalsAny | atLeast | atMost | member) ~ ws ~ End)
 
   /** Ossie cannot quote a name, so a name is a bare identifier and nothing else. */
   private def ident[$: P]: P[String] =
@@ -85,6 +87,12 @@ private[ossie] object Expression {
   private def inList[$: P]: P[InList] =
     P(ref ~ ws1 ~ "IN" ~ ws ~ "(" ~ ws ~ literalStr.rep(sep = ws ~ "," ~ ws) ~ ws ~ ")")
       .map(InList.apply)
+
+  /** `Ref == 'a' OR Ref == 'b'`, with the same name in every comparison. */
+  private def equalsAny[$: P]: P[InList] =
+    P((ref ~ ws ~ "==" ~ ws ~ literalStr).rep(min = 1, sep = ws1 ~ "OR" ~ ws1))
+      .filter(cs => cs.forall(_._1 == cs.head._1))
+      .map(cs => InList(cs.head._1, cs.map(_._2)))
 
   private def atLeast[$: P]: P[AtLeast] = P(ref ~ ws ~ ">=" ~ ws ~ value).map(AtLeast.apply)
 

@@ -153,6 +153,9 @@ object OssieImporter {
       id
     }
 
+    /** The namespace of the schema's elements that have no `iri`. */
+    private lazy val namespace: String = SchemaCodec.defaultNamespace(schemaId, None, Map.empty)
+
     def schema: SchemaDefinition = {
       val classes = entityTypes.map(classOf)
       // Only a range can refer to Any, and the class is declared only when one does.
@@ -182,7 +185,6 @@ object OssieImporter {
       */
     private def aiContext: Map[String, ExtensionImpl] =
       ontology.aiContext.map { node =>
-        val namespace = SchemaCodec.defaultNamespace(schemaId, None, Map.empty)
         val tag = Uri(namespace.concat("ai_context"))
         "ai_context" -> ExtensionImpl(extensionTag = tag, extensionValue = LinkmlAny(node.asYaml))
       }.toMap
@@ -223,7 +225,7 @@ object OssieImporter {
         mixins = parents.dropRight(1).map(Reference.apply),
         attributes = VectorMap.from(
           concept.relationships.zipWithIndex.map((r, i) =>
-            attributeOf(r, required(r.name), identifier.contains(r.name), i + 1),
+            attributeOf(name, r, required(r.name), identifier.contains(r.name), i + 1),
           ),
         ),
         uniqueKeys = compoundKey.map(uniqueKeyName -> _).toMap,
@@ -239,7 +241,12 @@ object OssieImporter {
           linkmlTypes.contains(c) || typeNames.contains(elementNames.getOrElse(c, c)),
         )
 
+    /** A relationship belongs to its concept, which plays its first role: Ossie names it
+      * `Concept.relationship`. So without an `iri`, its URI includes the class name, and the class
+      * is its domain.
+      */
     private def attributeOf(
+        className: String,
         relationship: Relationship,
         required: Boolean,
         identifier: Boolean,
@@ -263,7 +270,8 @@ object OssieImporter {
         name = name,
         rank = Some(rank),
         alias = Option.when(name != relationship.name)(relationship.name),
-        slotUri = relationship.iri.map(uriOf),
+        slotUri = Some(relationship.iri.map(uriOf).getOrElse(Uri(s"$namespace$className.$name"))),
+        domain = Some(Reference(className)),
         title = title.map(PlainText.apply),
         description = relationship.description.map(PlainText.apply),
         range = role.map(r => Reference(rangeOf(r.concept))),

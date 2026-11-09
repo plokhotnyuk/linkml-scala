@@ -108,6 +108,42 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms.collect { case SubClassOf(_, Cardinality(Bound.Min, 0, _, _), _) => () } shouldBe empty
     }
 
+    "state an attribute's domain only when every use of its property has one" in {
+      val schema = """
+        |classes:
+        |  A:
+        |    attributes:
+        |      label: {domain: A}
+        |  B:
+        |    attributes:
+        |      label: {domain: B}
+        |  C:
+        |    attributes:
+        |      code: {domain: C}
+        |  D:
+        |    attributes:
+        |      code: {}
+        """
+      val domains = ontologyOf(schema).axioms.collect { case d: Domain => d }
+      domains should contain only Domain(ns + "label", UnionOf(Seq(c("A"), c("B"))))
+    }
+
+    "describe a built-in datatype only with a type named after it" in {
+      val subjects = ontologyOf("""
+        |types:
+        |  Isbn:
+        |    uri: xsd:string
+        |    typeof: string
+        |    description: The identifier of a book.
+        |  dateTimeStamp:
+        |    uri: xsd:dateTimeStamp
+        |    typeof: datetime
+        |    description: A date and time with a time zone.
+        """).axioms.collect { case a: AnnotationAssertion => a.subject }
+      subjects should contain(xsd + "dateTimeStamp")
+      subjects should not contain (xsd + "string")
+    }
+
     "declare a literal identifier as a required property" in {
       val axioms = ontologyOf(personinfo).axioms
       axioms should contain allOf (

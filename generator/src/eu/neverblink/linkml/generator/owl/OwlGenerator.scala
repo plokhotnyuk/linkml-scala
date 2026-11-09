@@ -916,9 +916,32 @@ object OwlGenerator {
             if (singleValued.getOrElse(iri, false) && !nonSimple(iri)) {
               add(Characteristic(iri, PropertyCharacteristic.Functional))
             }
+            // A `domain` makes sense for the property only if every use of it states one.
+            val stated = domainsByProperty.getOrElse(iri, Nil)
+            if (stated.nonEmpty && stated.forall(_.isDefined)) {
+              val b = Seq.newBuilder[ClassExpr]
+              stated.flatten.distinct.foreach { (d: Reference[ClassDefinition]) =>
+                sv.classes.get(d.value).foreachFast(c => b.addOne(ClassExpr.Named(c.uriStr)))
+              }
+              val domains = b.result()
+              if (domains.sizeIs == 1) add(Domain(iri, domains.head))
+              else if (domains.nonEmpty) add(Domain(iri, ClassExpr.UnionOf(domains)))
+            }
           }
         }
       }
+
+    /** The `domain` of each use of each property, in every class. */
+    private lazy val domainsByProperty
+        : collection.Map[String, collection.Seq[Option[Reference[ClassDefinition]]]] = {
+      val b = mutable.HashMap.empty[String, mutable.ArrayBuffer[Option[Reference[ClassDefinition]]]]
+      sv.classes.foreachEntry { (_, c) =>
+        c.derivedAttributes.foreachEntry { (_, a) =>
+          b.getOrElseUpdate(a.uriStr, mutable.ArrayBuffer.empty).addOne(a.slot.domain)
+        }
+      }
+      b
+    }
 
     // Enums
 
@@ -984,10 +1007,11 @@ object OwlGenerator {
             )
             add(DatatypeDefinition(iri, restriction))
           }
+        // A type named after the built-in datatype describes the datatype itself, as when an
+        // ontology like W3C Time labels `xsd:dateTimeStamp`. Any other type mapped to it doesn't.
         case DataRange.Datatype(iri)
             if !Metadata.of(tv._type).isEmpty &&
-              sv.types.values.count(t => !isLinkmlOwn(t) && t.uriStr == iri) == 1 =>
-          // No declaration needed, but keep what the schema says about the datatype.
+              iri.substring(math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1) == tv.name =>
           annotate(iri, tv)
         case _ =>
       }

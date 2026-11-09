@@ -53,6 +53,16 @@ class ExpressionSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
       parsed("REGEXP_LIKE(S, '^x')") shouldBe RegexpLike(Ref("S"), Literal.Text("^x"))
     }
 
+    "read equality comparisons joined by OR as an IN list" in {
+      parsed("Code == 'A' OR Code == 'B' OR Code == 'C'") shouldBe
+        InList(Ref("Code"), Seq(Literal.Text("A"), Literal.Text("B"), Literal.Text("C")))
+      parsed("Code == 'A'") shouldBe InList(Ref("Code"), Seq(Literal.Text("A")))
+    }
+
+    "refuse equality comparisons on different names" in {
+      Expression.parse("Code == 'A' OR Other == 'B'") shouldBe None
+    }
+
     "unescape a doubled apostrophe" in {
       parsed("Kind IN ('it''s')") shouldBe InList(Ref("Kind"), Seq(Literal.Text("it's")))
     }
