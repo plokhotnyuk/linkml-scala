@@ -869,9 +869,10 @@ body { background: var(--bg); }
 }
 .file-tabs--switch .file-tab:hover { background: var(--accent-soft); }
 
-/* The page view's button back to the index (see page-view.ts): first in the tab bar, or beside the switch
-   on a phone. */
-.page-home {
+/* The page view's Home, Back and Forward buttons (see page-view.ts), in the Output bar next to
+   its title. */
+.page-nav { flex-shrink: 0; display: inline-flex; gap: 2px; }
+.page-nav-btn {
   appearance: none;
   flex-shrink: 0;
   display: inline-flex;
@@ -883,11 +884,15 @@ body { background: var(--bg); }
   padding: 4px 8px;
   color: var(--text-secondary);
 }
-.page-home:hover:not(:disabled) { color: var(--text); background: var(--accent-soft); }
-.page-home:disabled { cursor: default; opacity: 0.45; }
-.page-home .ic { width: 15px; height: 15px; }
-/* Beside the switch, it has to leave the Output bar room for its buttons. */
-.panel-head > .page-home { padding: 2px; }
+.page-nav-btn:hover:not(:disabled) { color: var(--text); background: var(--accent-soft); }
+.page-nav-btn:disabled { cursor: default; opacity: 0.45; }
+.page-nav-btn .ic { width: 15px; height: 15px; }
+/* They push the bar's own buttons to the end. On a phone they take less room, to leave room for those. */
+.panel-head > .page-nav { margin-right: auto; margin-left: 8px; }
+@media (max-width: 640px) {
+  .panel-head > .page-nav { margin-left: 4px; }
+  .panel-head > .page-nav .page-nav-btn { padding: 2px 4px; }
+}
 .file-tabs--switch .file-tab--active,
 .file-tabs--switch .file-tab--active:hover { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
 

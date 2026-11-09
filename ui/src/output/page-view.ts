@@ -1,12 +1,13 @@
-// One page of the Docs target, with its Markdown on the Code half. Links lead to the other pages,
-// which the Docs target is asked for one at a time, and the Home button back to the index.
+// One page of the Docs target. Links lead to the other pages, which the Docs target is asked for
+// one at a time. The Home, Back and Forward buttons do what the browser's would, as the playground
+// is a single page that the browser's own buttons would leave.
 import { $ } from "../lib/dom.js";
 import { isPageLink, resolvePageLink } from "../lib/markdown.js";
-import { INDEX_PAGE, state } from "../state.js";
+import { INDEX_PAGE, type PageVisit, state } from "../state.js";
 import { errorNotice } from "./notice.js";
 import { $outputEditorHost } from "./output-editor.js";
-import { activate, type OutputView } from "./panel.js";
-import { TwinTabs } from "./view-tabs.js";
+import { activate, showsCode, type OutputView } from "./panel.js";
+import { showButtons } from "./view-tabs.js";
 
 const $pageView = $("pageView");
 
@@ -17,8 +18,8 @@ let pageSource: string | null = null;
 // to date by the `scroll` listener of the page view, because reading `scrollTop` when the page has
 // changed makes the browser lay out the page first.
 let pageScrollTop = 0;
-
-const tabs = new TwinTabs("Page", $pageView, () => showHalf());
+// Where to scroll the next page that is shown, when Back or Forward asks for it.
+let nextScrollTop = 0;
 
 const pageView: OutputView = {
   hide() {
@@ -27,7 +28,6 @@ const pageView: OutputView = {
     pageSource = null;
     shownPagePath = null;
     pageScrollTop = 0;
-    tabs.clear();
     $outputEditorHost.hidden = false;
   },
   copyText: () => pageSource,
@@ -40,33 +40,71 @@ export function onPageChanged(handler: () => void): void {
   regenerate = handler;
 }
 
+/** The page on screen, as Back or Forward would return to it. */
+function currentVisit(): PageVisit {
+  return { path: state.pagePath, scrollTop: shownPagePath === state.pagePath ? pageScrollTop : 0 };
+}
+
 /** Ask for the page `path` of the Docs target, which the page view then shows. */
 function showDocsPage(path: string): void {
+  if (path === state.pagePath) return;
+  state.pagesBack.push(currentVisit());
+  state.pagesForward = [];
   state.pagePath = path;
+  nextScrollTop = 0;
   regenerate();
 }
 
-// The button back to the index, at the start of the tab bar, or on a phone beside the Page/Code
-// switch.
-const $pageHome = document.createElement("button");
-$pageHome.className = "page-home";
-$pageHome.title = "Back to the index";
-$pageHome.setAttribute("aria-label", "Back to the index");
-$pageHome.innerHTML =
-  '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>';
-$pageHome.addEventListener("click", () => showDocsPage(INDEX_PAGE));
+/** Go to the last page of `from`, keeping the page on screen in `to`. */
+function step(from: PageVisit[], to: PageVisit[]): void {
+  const visit = from.pop();
+  if (!visit) return;
+  to.push(currentVisit());
+  state.pagePath = visit.path;
+  nextScrollTop = visit.scrollTop;
+  regenerate();
+}
 
-/** Show the page `path` of the Docs target, with the Markdown `text` and the HTML `html`, behind a
- * Page/Code tab pair sharing the file tab bar. `html` is null if the documentation has no such
- * page. */
+function navButton(label: string, icon: string, click: () => void): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.className = "page-nav-btn";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.innerHTML = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>`;
+  btn.addEventListener("click", click);
+  return btn;
+}
+
+// The Home, Back and Forward buttons, in the Output bar next to its title.
+const $pageNav = document.createElement("span");
+$pageNav.className = "page-nav";
+const $pageHome = navButton("Back to the index", '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/>', () =>
+  showDocsPage(INDEX_PAGE),
+);
+const $pageBack = navButton("Back", '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>', () =>
+  step(state.pagesBack, state.pagesForward),
+);
+const $pageForward = navButton("Forward", '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>', () =>
+  step(state.pagesForward, state.pagesBack),
+);
+$pageNav.append($pageHome, $pageBack, $pageForward);
+
+/** Show the page `path` of the Docs target, with the Markdown `text` and the HTML `html`. `html` is
+ * null if the documentation has no such page. */
 export function showPage(path: string, text: string, html: string | null): void {
   activate(pageView);
-  tabs.setCode(text, "text");
-  tabs.showTabs($pageHome);
+  showsCode(false);
+  showButtons($pageNav);
   $pageHome.disabled = path === INDEX_PAGE;
+  $pageBack.disabled = state.pagesBack.length === 0;
+  $pageForward.disabled = state.pagesForward.length === 0;
 
-  // Another page starts at the top. The same page regenerated, as while typing, keeps its place.
-  if (path !== shownPagePath) pageScrollTop = 0;
+  // The same page regenerated, as while typing, keeps its place. Another page starts at the top,
+  // or where it was left when Back or Forward returns to it.
+  if (path !== shownPagePath) {
+    pageScrollTop = nextScrollTop;
+    nextScrollTop = 0;
+  }
   shownPagePath = path;
   pageSource = text;
   if (html === null) {
@@ -75,12 +113,10 @@ export function showPage(path: string, text: string, html: string | null): void 
     // The HTML is safe to show as it is (see markdown.ts).
     $pageView.innerHTML = html;
   }
-  showHalf();
-}
-
-function showHalf(): void {
+  $outputEditorHost.hidden = true;
+  $pageView.hidden = false;
   // A hidden element loses where it was scrolled to, and a new page starts at the top.
-  if (tabs.showHalf()) $pageView.scrollTop = pageScrollTop;
+  $pageView.scrollTop = pageScrollTop;
 }
 
 $pageView.addEventListener(

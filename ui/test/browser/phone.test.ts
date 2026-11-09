@@ -86,7 +86,7 @@ test("the direction is a list like the target picker", async ({ page }) => {
 
 test("a pair of views is a switch in the Output bar", async ({ page }) => {
   const head = page.locator("#outputPanel .panel-head");
-  for (const [target, view] of [["Documentation", "Page"], ["ER diagram", "Diagram"], ["Statistics", "Stats"]]) {
+  for (const [target, view] of [["ER diagram", "Diagram"], ["Statistics", "Stats"]]) {
     await pickTarget(page, target!);
     const tab = head.getByRole("button", { name: view, exact: true });
     await expect(tab).toBeVisible();
@@ -100,10 +100,44 @@ test("a pair of views is a switch in the Output bar", async ({ page }) => {
   }
 });
 
+test("the Home, Back and Forward buttons of the docs pages are in the Output bar", async ({ page }) => {
+  const head = page.locator("#outputPanel .panel-head");
+  await pickTarget(page, "Documentation");
+  const home = head.getByRole("button", { name: "Back to the index" });
+  const back = head.getByRole("button", { name: "Back", exact: true });
+  const forward = head.getByRole("button", { name: "Forward" });
+  await expect(home).toBeDisabled();
+  await expect(back).toBeDisabled();
+  await expect(forward).toBeDisabled();
+  await expect(page.locator("#fileTabs")).toBeHidden();
+  await expect(page.locator("#statusPill")).toHaveText(/ms$/);
+  await expectInOneRow(page, "#outputPanel .panel-head", "#outputPanel .panel-head > :visible, #outputPanel .panel-actions > :visible");
+
+  const index = await page.locator("#pageView").innerText();
+  await page.locator('#pageView a[href$=".md"]').first().click();
+  await expect(home).toBeEnabled();
+  await expect(back).toBeEnabled();
+  await expect(forward).toBeDisabled();
+  const other = await page.locator("#pageView").innerText();
+  expect(other).not.toBe(index);
+
+  await back.click();
+  await expect(home).toBeDisabled();
+  await expect(back).toBeDisabled();
+  await expect(forward).toBeEnabled();
+  await expect(page.locator("#pageView")).toHaveText(index);
+
+  await forward.click();
+  await expect(forward).toBeDisabled();
+  await expect(page.locator("#pageView")).toHaveText(other);
+});
+
 test("Copy is left out while a page, a diagram or tables are showing, and back for their code", async ({ page }) => {
   const head = page.locator("#outputPanel .panel-head");
   const copy = page.locator("#copyOutput");
-  for (const [target, view] of [["Documentation", "Page"], ["ER diagram", "Diagram"], ["Statistics", "Stats"]]) {
+  await pickTarget(page, "Documentation");
+  await expect(copy).toBeHidden();
+  for (const [target, view] of [["ER diagram", "Diagram"], ["Statistics", "Stats"]]) {
     await pickTarget(page, target!);
     await head.getByRole("button", { name: view, exact: true }).click();
     await expect(copy).toBeHidden();
@@ -183,5 +217,11 @@ test.describe("on a wide screen", () => {
     await pickTarget(page, "ER diagram");
     await expect(page.locator("#fileTabs")).toBeVisible();
     await expect(page.locator("#outputPanel .panel-head #fileTabs")).toHaveCount(0);
+  });
+
+  test("the Home, Back and Forward buttons of the docs pages are in the Output bar too", async ({ page }) => {
+    await pickTarget(page, "Documentation");
+    await expect(page.locator("#outputPanel .panel-head > .page-nav .page-nav-btn")).toHaveCount(3);
+    await expect(page.locator("#fileTabs")).toBeHidden();
   });
 });
