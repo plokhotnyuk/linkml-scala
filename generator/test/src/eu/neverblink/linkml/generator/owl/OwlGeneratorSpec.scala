@@ -105,9 +105,33 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
         SubClassOf(c("NamedThing"), Cardinality(Bound.Exact, 1, PropertyRef(ns + "name"))),
         SubClassOf(c("NamedThing"), UnionOf(Seq(c("Person"), c("Organisation")))),
       )
-      // No min-0 restrictions. The identifier is the node's IRI, not a property.
       axioms.collect { case SubClassOf(_, Cardinality(Bound.Min, 0, _, _), _) => () } shouldBe empty
-      axioms.collect { case d @ Declaration(_, iri, _) if iri == ns + "id" => d } shouldBe empty
+    }
+
+    "declare a literal identifier as a required property" in {
+      val axioms = ontologyOf(personinfo).axioms
+      axioms should contain allOf (
+        Declaration(EntityKind.DataProperty, ns + "id"),
+        SubClassOf(c("NamedThing"), Cardinality(Bound.Exact, 1, PropertyRef(ns + "id"))),
+      )
+    }
+
+    "declare an IRI identifier as an optional property" in {
+      val axioms = ontologyOf("""
+        |classes:
+        |  Thing:
+        |    attributes:
+        |      id:
+        |        identifier: true
+        |        range: uri
+        """).axioms
+      axioms should contain allOf (
+        Declaration(EntityKind.ObjectProperty, ns + "id"),
+        SubClassOf(c("Thing"), Cardinality(Bound.Max, 1, PropertyRef(ns + "id"))),
+      )
+      axioms.collect { case a @ SubClassOf(_, Cardinality(Bound.Min | Bound.Exact, _, _, _), _) =>
+        a
+      } shouldBe empty
     }
 
     "declare slots with their range, kind and characteristics" in {

@@ -2,5 +2,5 @@
 @base <https://neverblink.eu/linkml/tests/instances/> .
 
 <root> a :Node;
-  :id "root"; # TODO LNK-59
+  :id "root";
   :label "Root" .

@@ -2,18 +2,15 @@
 @prefix inst: <https://neverblink.eu/linkml/tests/instances/> .
 
 inst:city-library a :Library ;
-  :id inst:city-library ;
   :name "City library" ;
   :people inst:lem ;
   :books inst:solaris, inst:cyberiad .
 
 inst:lem a :Person ;
-  :id inst:lem ;
   :name "Stanislaw Lem" ;
   :email "lem@example.org" .
 
 inst:solaris a :Book ;
-  :id inst:solaris ;
   :title "Solaris" ;
   :isbn "978-0156027601" ;
   :published_year 1961 ;
@@ -27,7 +24,6 @@ inst:solaris a :Book ;
   ] .
 
 inst:cyberiad a :Book ;
-  :id inst:cyberiad ;
   :title "The Cyberiad" ;
   :in_print false ;
   :status :LoanStatus.AVAILABLE .

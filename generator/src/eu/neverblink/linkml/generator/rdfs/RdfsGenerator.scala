@@ -133,7 +133,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     // This avoids emitting repeated metadata in streaming formats.
     val classDefinitions: Map[String, Seq[ClassView]] = classes.values.toSeq.groupBy(_.uriStr)
     val propertyUsages: Map[String, Seq[(ClassView, SlotView)]] = classes.values.toSeq
-      .flatMap(c => c.derivedAttributes.values.filterNot(_.inner.identifier).map((c, _)))
+      .flatMap(c => c.derivedAttributes.values.map((c, _)))
       .groupBy(_._2.uriStr)
 
     classes.values.foreach { c =>
@@ -150,11 +150,9 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
           .foreach(parent => sink.triple(classNameIri, Rdfs.subClassOf, parent))
       }
       c.derivedAttributes.values.foreach { s =>
-        if (!s.inner.identifier) {
-          val usages = propertyUsages(s.uriStr)
-          if (usages.head._1 eq c)
-            emitProperty(sink, Iri(s.uriStr), usages.map(_._2))
-        }
+        val usages = propertyUsages(s.uriStr)
+        if (usages.head._1 eq c)
+          emitProperty(sink, Iri(s.uriStr), usages.map(_._2))
       }
     }
 
@@ -164,7 +162,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
         sv.slotDefinitions.filter(_._2.definingSchema.id == sv.root.id)
       else sv.slotDefinitions
     slots.values.toSeq
-      .filterNot(s => s.inner.identifier || propertyUsages.contains(s.uriStr))
+      .filterNot(s => propertyUsages.contains(s.uriStr))
       .groupBy(_.uriStr).toSeq.sortBy(_._1)
       .foreach((uri, definitions) => emitProperty(sink, Iri(uri), definitions.sortBy(_.name)))
 

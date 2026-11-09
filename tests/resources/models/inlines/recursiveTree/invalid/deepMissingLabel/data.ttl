@@ -2,15 +2,15 @@
 @base <https://neverblink.eu/linkml/tests/instances/> .
 
 <root> a :Node;
-  :id "root"; # TODO LNK-59
+  :id "root";
   :label "Root";
   :children <a> .
 
 <a> a :Node;
-  :id "a"; # TODO LNK-59
+  :id "a";
   :label "A";
   :children <a1> .
 
 <a1> a :Node;
-  :id "a1"; # TODO LNK-59
+  :id "a1";
   :parent <a> .

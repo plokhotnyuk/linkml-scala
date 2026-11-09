@@ -1,0 +1,18 @@
+id: https://neverblink.eu/linkml/tests/identifiedString/
+name: identifiedString
+description: A tree root with a string identifier, which RDF preserves as a literal next to the node IRI.
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      id:
+        rank: 1
+        identifier: true
+        range: string
+      some_slot:
+        rank: 2
+        range: string

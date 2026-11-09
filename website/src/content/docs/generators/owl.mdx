@@ -60,7 +60,7 @@ The LinkML-to-OWL generator declares every annotation property that is used, whi
 These differences are in place mostly to make the OWL describe the same RDF data as the RDFS and SHACL generators, which we think is a more consistent approach.
 
 - **IRIs are the ones the data uses**: `class_uri`, `slot_uri`, `enum_uri` and the permissible value `meaning`, as in this project's RDF, RDFS and SHACL. `gen-owl` uses the schema's own namespace by default (`--use-native-uris`).
-- **Identifier slots are not properties.** In RDF, an identifier is the IRI of the node.
+- **Identifier slots whose values are IRIs are optional properties.** Such an identifier is the IRI of the node, so stating it as a property too is optional. Other identifiers, such as a string ISBN, are required.
 - **Slots with a `uri` or `uriorcurie` range, or with an `implicit_prefix`, are object properties without a range**, since their values are IRIs in RDF, as in the SHACL generator.
 - **Permissible values are individuals** of a class defined by `owl:oneOf`. `gen-owl` makes them classes by default, which is still possible in ohi LinkML with the `--permissible-values class` option.
 - **Descriptions are `rdfs:comment`** by default, rather than the metamodel's `skos:definition`. If you select the `--metadata-profile linkml` option, descriptions will be written as `skos:definition`, as `gen-owl` does by default.

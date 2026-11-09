@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedString/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+<978-0-306-40615-7> a :SomeClass;
+  :id "978-0-306-40615-7" .

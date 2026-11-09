@@ -15,6 +15,12 @@ import { Description, Options, Usage } from '../../../components/converter';
 
 <Options name="shacl" />
 
+## Identifiers
+
+An identifier slot gets a property shape like any other slot.
+If its values are IRIs (range `uri`, `curie` or `uriorcurie`, or an `implicit_prefix`), the identifier is the IRI of the node, so the property is optional.
+Other identifiers, such as a string ISBN, are required.
+
 ## Class hierarchy
 
 The SHACL generator gives a slot whose range is a class an `sh:class` constraint with that class.

@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedInteger/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+<abc> a :SomeClass;
+  :id "abc";
+  :some_slot "a string" .

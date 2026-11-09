@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedInteger/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+<7> a :SomeClass;
+  :id 7 .

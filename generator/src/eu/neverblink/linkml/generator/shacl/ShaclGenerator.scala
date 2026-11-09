@@ -499,9 +499,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
         slot.implicitPrefix.isEmpty
       case _ => false
     })
+    // An IRI identifier is the node's IRI, so stating it as a property is optional.
+    val iriIdentifier = slot.identifier && (attributeView match {
+      case t: TypeAttributeView => t.subjectType.isIri
+      case _ => false
+    })
     processCardinality(
       sink,
-      slot,
+      if (iriIdentifier) slot.copy(required = false) else slot,
       if (slot.multivalued || singleText) None else ShaclGenerator.one,
       property,
     )
@@ -574,24 +579,20 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       // subclasses gets an open shape.
       val closed = !open && c.isConcrete && !c.allowsExtraSlots && !parentNames.contains(c.name)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
-      sink.list(
-        classNameIri,
-        Shacl.ignoredProperties,
-        c.identifier.foldFast(Seq(Rdf.`type`))(id => Seq(Rdf.`type`, new Iri(id.uriStr))),
-      )
+      sink.list(classNameIri, Shacl.ignoredProperties, Seq(Rdf.`type`))
       // LinkML's `rank` gives slots an explicit order. Slots without one keep their
       // declaration order, but start after the highest rank in the class.
       var order = 0
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
-        if (!slot.identifier && !slot.designatesType)
+        if (!slot.designatesType)
           slot.rank.foreachFast(r => if (r >= order) order = r + 1)
       }
       // The type designator gets no PropertyShape: in RDF, the class of an instance is its
       // `rdf:type`, which is in sh:ignoredProperties.
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
-        if (!slot.identifier && !slot.designatesType) {
+        if (!slot.designatesType) {
           processSlot(sink, av, order, classNameIri, groups)
           if (slot.rank.isEmpty) order += 1
         }

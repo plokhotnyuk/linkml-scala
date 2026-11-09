@@ -81,7 +81,8 @@ Usual fixes afterwards — ask the user rather than guess:
 * Narrow `range: Any` (OWL properties with no range or a mixed one).
 * Make slots single-valued where the data has one value. OWL/RDFS import everything that is not
   functional as multivalued.
-* Add an `identifier` slot if the data needs one. RDF uses the node IRI, so none is imported.
+* Mark an `identifier` slot if the data needs one. The importers never mark one: RDF names a node
+  by its IRI, and an identifier that `to owl` wrote comes back as a plain required slot.
 * Rename what reads badly, and set a real `--schema-id` for Ossie (the default is a placeholder).
 
 Round-trip with `to owl` or `to ossie`.

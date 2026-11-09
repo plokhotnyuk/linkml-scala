@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedString/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+<shelf/1> a :SomeClass;
+  :id "shelf/1";
+  :some_slot "a string" .

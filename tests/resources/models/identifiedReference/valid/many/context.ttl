@@ -1,8 +1,6 @@
 @prefix : <https://neverblink.eu/linkml/tests/identifiedReference/> .
 @prefix inst: <https://neverblink.eu/linkml/tests/instances/> .
 
-inst:target-one a :SomeOtherClass ;
-  :id inst:target-one .
+inst:target-one a :SomeOtherClass .
 
-inst:target-two a :SomeOtherClass ;
-  :id inst:target-two .
+inst:target-two a :SomeOtherClass .

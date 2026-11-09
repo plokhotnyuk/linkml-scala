@@ -681,6 +681,22 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       schema.slotDefinitions("some_slot").range.map(_.value) shouldBe Some("langstring")
     }
 
+    "emit identifier slots as properties" in {
+      for (model, range) <- Seq(
+          ModelCatalogue.reference.model -> XmlSchema.string,
+          ModelCatalogue.identifiedUri.model -> XmlSchema.get("anyURI"),
+        )
+      do {
+        val sink = CollectingRdfSink()
+        RdfsGenerator(using model).generate(sink, RdfsGeneratorOptions())
+        val id = Iri(model.root.id.original + "id")
+        sink.triples should contain allOf (
+          Triple(id, Rdf.`type`, Rdf.Property),
+          Triple(id, Rdfs.range, range),
+        )
+      }
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {

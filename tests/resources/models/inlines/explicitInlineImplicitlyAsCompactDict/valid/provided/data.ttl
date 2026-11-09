@@ -5,4 +5,4 @@ _:b a :SomeClass;
   :some_slot <some_id> .
 
 <some_id> a :SomeOtherClass;
-  :id "some_id" . # TODO LNK-59
+  :id "some_id" .

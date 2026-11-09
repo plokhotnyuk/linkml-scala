@@ -1,4 +1,5 @@
 @prefix : <https://neverblink.eu/linkml/tests/referenceInteger/> .
 @base <https://neverblink.eu/linkml/tests/instances/> .
 
-<123> a :SomeOtherClass .
+<123> a :SomeOtherClass;
+  :id 123 .

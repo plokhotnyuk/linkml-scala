@@ -15,6 +15,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.StringReader
+import scala.jdk.CollectionConverters.*
 
 class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
   import ShaclGeneratorSpec.skipModels
@@ -657,7 +658,15 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |<https://neverblink.eu/linkml/shacl/test/SomeOtherClass> a sh:NodeShape;
           |  sh:closed true;
-          |  sh:ignoredProperties (rdf:type <https://neverblink.eu/linkml/shacl/test/id>);
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:minCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/id>
+          |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeOtherClass> .
           |
           |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
@@ -704,7 +713,15 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |<https://neverblink.eu/linkml/shacl/test/SomeOtherClass> a sh:NodeShape;
           |  sh:closed true;
-          |  sh:ignoredProperties (rdf:type <https://neverblink.eu/linkml/shacl/test/id>);
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:minCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/id>
+          |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeOtherClass> .
           |
           |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
@@ -1079,12 +1096,34 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should include("sh:nodeKind sh:IRI")
     }
 
-    "ignore identifiers" in {
-      val turtle =
-        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.reference.model).generate(_))
-      turtle should include(
-        "sh:ignoredProperties ( rdf:type <https://neverblink.eu/linkml/tests/reference/id> )",
-      )
+    /** The `sh:minCount` values of the property shapes for `path`, one per shape. */
+    def minCountsOf(model: SchemaView, path: String): Seq[Option[String]] = {
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using model).generate(_))
+      val shapes = Rio.parse(StringReader(turtle), RDFFormat.TURTLE)
+      val sh = "http://www.w3.org/ns/shacl#"
+      shapes.filter(null, vf.createIRI(sh + "path"), vf.createIRI(path)).subjects().asScala
+        .map(shape =>
+          shapes.filter(shape, vf.createIRI(sh + "minCount"), null).objects().asScala
+            .headOption.map(_.stringValue()),
+        ).toSeq
+    }
+
+    "require identifiers that are literals" in {
+      minCountsOf(ModelCatalogue.reference.model, "https://neverblink.eu/linkml/tests/reference/id")
+        .shouldBe(Seq(Some("1")))
+    }
+
+    "make identifiers that are IRIs optional" in {
+      for (model, path) <- Seq(
+          ModelCatalogue.identifiedUri.model -> "identifiedUri/id",
+          ModelCatalogue.curie.model -> "curie/id",
+          ModelCatalogue.implicitPrefix.model -> "implicitPrefix/id",
+        )
+      do {
+        val counts = minCountsOf(model, s"https://neverblink.eu/linkml/tests/$path")
+        counts should not be empty
+        counts.foreach(_ shouldBe None)
+      }
     }
 
     "use rdf:type for type designators, with no PropertyShape for the designator slot" in {

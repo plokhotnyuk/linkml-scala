@@ -57,9 +57,11 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `functions/basic` | 0 | 0 | A schema with the three shapes a function can take. |
 | `functions/parameters` | 0 | 0 | A function whose parameter class covers the slot shapes a p… |
 | `functions/returns` | 0 | 0 | Functions returning each kind of element a `returns` may na… |
+| `identifiedInteger` | 8 | 8 | A tree root with an integer identifier, which RDF preserves… |
 | `identifiedLangString` | 8 | 9 | A tree root named by a uri identifier, with a single-valued… |
 | `identifiedNested` | 6 | 0 | A tree root named by a uri identifier, owning an inlined cl… |
 | `identifiedReference` | 8 | 0 | A tree root named by a uri identifier, referencing another… |
+| `identifiedString` | 8 | 4 | A tree root with a string identifier, which RDF preserves a… |
 | `identifiedUri` | 6 | 0 | A tree root named by a uri identifier, alongside slots of s… |
 | `ifabsent/enums` | 0 | 0 |  |
 | `ifabsent/scalars` | 0 | 0 | Default values (`ifabsent`) for string, integer and boolean… |

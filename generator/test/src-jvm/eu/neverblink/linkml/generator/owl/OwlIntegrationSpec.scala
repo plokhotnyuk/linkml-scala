@@ -94,6 +94,8 @@ object OwlIntegrationSpec {
     "cardinalityExplicit" -> "oneToThreeMissing" -> openWorld,
     "cardinalityExplicit" -> "exactlyTwoTooFew" -> openWorld,
     "basic" -> "missing" -> openWorld,
+    "identifiedString" -> "missingId" -> openWorld,
+    "identifiedInteger" -> "missingId" -> openWorld,
     "basic" -> "empty" -> openWorld,
     "anything" -> "missing" -> openWorld,
     "typeDesignator2" -> "wrongSlotForType" -> s"$openWorld, and $unknownProperty",
