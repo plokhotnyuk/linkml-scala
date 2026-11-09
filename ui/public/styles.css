@@ -132,7 +132,10 @@ body { background: var(--bg); }
 
 /* ── Layout ── */
 
-.app-shell { display: flex; flex-direction: column; height: 100vh; }
+/* On phones, 100vh is the height with the browser's bars hidden, so the bottom of the page - such as
+   the panel divider, when only the input shows - would sit under them. 100dvh is the height that
+   is actually visible; 100vh stays for browsers without it. */
+.app-shell { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 
 .app-header {
   flex-shrink: 0;
