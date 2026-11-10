@@ -47,7 +47,7 @@ export interface Step {
 export interface Target extends Step {
   /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`.
    * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. `page` renders it
-   * as Markdown, behind a Page/Code tab pair. `stats` renders the statistics as tables. */
+   * as Markdown, with Home, Back and Forward buttons. `stats` renders the statistics as tables. */
   view?: "report" | "diagram" | "page" | "stats";
   /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
    * the multi-MB Scala.js bundle, which the UI thread never loads. For a `page`, `page` is the path

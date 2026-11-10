@@ -3,7 +3,7 @@ import type { Importer } from "../catalog/types.js";
 import { scheduleGenerate, setInputSource } from "../generation.js";
 import { createInput, setDoc, setInputLang } from "../lib/editor.js";
 import { $ } from "../lib/dom.js";
-import { activeStep, INDEX_PAGE, state } from "../state.js";
+import { activeStep, resetPages, state } from "../state.js";
 import { inputDoc, inputKey, storageKey } from "./documents.js";
 import { clearLinkParams, syncLinkParams } from "./links.js";
 
@@ -35,7 +35,7 @@ setInputSource(inputText);
 export function setInput(text: string): void {
   setDoc(inputView, text);
   // Another schema has other pages.
-  state.pagePath = INDEX_PAGE;
+  resetPages();
 }
 
 /** Which document the editor is showing, so that switching target within one direction does not

@@ -19,7 +19,25 @@ export const state = {
   /** The page of the Docs target to show, such as `index.md` or `classes/person.md`. Kept while the
    * schema is edited, and back to the index when another schema is put in the input. */
   pagePath: INDEX_PAGE,
+  /** The pages of the Docs target that Back goes to, the last one first. */
+  pagesBack: [] as PageVisit[],
+  /** The pages of the Docs target that Forward goes to, the last one first. */
+  pagesForward: [] as PageVisit[],
 };
+
+/** A page of the Docs target that was left, and where it was scrolled to. */
+export interface PageVisit {
+  path: string;
+  scrollTop: number;
+}
+
+/** Go back to the index of the Docs target, and forget the pages seen before, as when another
+ * schema is put in the input. */
+export function resetPages(): void {
+  state.pagePath = INDEX_PAGE;
+  state.pagesBack = [];
+  state.pagesForward = [];
+}
 
 export function steps(dir: Direction): Step[] {
   return dir === "fromLinkml" ? TARGETS : IMPORTERS;

@@ -15,28 +15,27 @@ const narrowLayout = matchMedia("(max-width: 640px)");
 const $outputHead = $("outputPanel").querySelector<HTMLElement>(".panel-head")!;
 /** Whether the tab bar holds the two halves of a view, rather than a generator's files. */
 let tabsAreViews = false;
-/** A button that goes before the tabs, such as the page view's Home button. */
-let leading: HTMLElement | null = null;
+/** Buttons that the tab bar holds instead of tabs, such as the page view's Home, Back and Forward. */
+let buttons: HTMLElement | null = null;
 
 function placeTabs(): void {
-  const inHead = tabsAreViews && narrowLayout.matches;
-  $fileTabs.classList.toggle("file-tabs--switch", inHead);
+  const inHead = buttons !== null || (tabsAreViews && narrowLayout.matches);
+  $fileTabs.classList.toggle("file-tabs--switch", inHead && tabsAreViews);
   const after = inHead ? $outputHead.querySelector(".panel-title")! : $outputHead;
   if ($fileTabs.previousElementSibling !== after) after.after($fileTabs);
-  // Not one of the two halves, so on a phone it goes beside the switch rather than in it.
-  if (leading) {
-    if (inHead) $fileTabs.before(leading);
-    else $fileTabs.prepend(leading);
+  // The buttons go in the Output bar on any screen, and the empty tab bar is left out.
+  if (buttons) {
+    $fileTabs.before(buttons);
+    $fileTabs.hidden = true;
   }
 }
 narrowLayout.addEventListener("change", placeTabs);
 
-/** Fill the tab bar with a button for each of `labels`, the one at `active` marked, and `first`
- * before them. */
-function fillTabs(labels: string[], active: string | null, pick: (label: string, btn: HTMLElement) => void, first: HTMLElement | null): void {
+/** Fill the tab bar with a button for each of `labels`, the one at `active` marked. */
+function fillTabs(labels: string[], active: string | null, pick: (label: string, btn: HTMLElement) => void): void {
+  buttons?.remove();
+  buttons = null;
   $fileTabs.innerHTML = "";
-  if (leading !== first) leading?.remove();
-  leading = first;
   for (const label of labels) {
     const btn = document.createElement("button");
     btn.className = "file-tab" + (label === active ? " file-tab--active" : "");
@@ -50,15 +49,24 @@ function fillTabs(labels: string[], active: string | null, pick: (label: string,
 /** Take the tab bar off screen, for a view that has no tabs. */
 export function hideTabs(): void {
   tabsAreViews = false;
-  fillTabs([], null, () => {}, null);
+  fillTabs([], null, () => {});
   $fileTabs.hidden = true;
+}
+
+/** Put `bar`, a group of buttons, in the Output bar instead of tabs. */
+export function showButtons(bar: HTMLElement): void {
+  tabsAreViews = false;
+  fillTabs([], null, () => {});
+  buttons = bar;
+  $fileTabs.hidden = false;
+  placeTabs();
 }
 
 /** A tab for each of a generator's files, called `names`, with the one called `active` marked. The
  * bar is left out when there is only one file. */
 export function showFileTabs(names: string[], active: string | null, pick: (name: string) => void): void {
   tabsAreViews = false;
-  fillTabs(names, active, pick, null);
+  fillTabs(names, active, pick);
   $fileTabs.hidden = names.length <= 1;
 }
 
@@ -88,8 +96,8 @@ export class TwinTabs {
     private readonly switched: () => void,
   ) {}
 
-  /** Put the two tabs in the tab bar, with `first` before them. */
-  showTabs(first: HTMLElement | null = null): void {
+  /** Put the two tabs in the tab bar. */
+  showTabs(): void {
     tabsAreViews = true;
     fillTabs([this.label, "Code"], this.code ? "Code" : this.label, (label, btn) => {
       const code = label === "Code";
@@ -99,7 +107,7 @@ export class TwinTabs {
         other.classList.toggle("file-tab--active", other === btn);
       }
       this.switched();
-    }, first);
+    });
     $fileTabs.hidden = false;
   }
 
