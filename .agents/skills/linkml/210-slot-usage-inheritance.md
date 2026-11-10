@@ -11,7 +11,7 @@ This page shows how ohi LinkML combines two kinds of them, where the LinkML spec
 - [Boolean expressions](#boolean-expressions): `any_of`, `all_of`, `exactly_one_of` and `none_of`, which are lists of conditions.
   ohi LinkML works differently from both the specification and LinkML-Python here.
 
-It also shows what the generators do when a class changes an inherited slot in a way that their output can't express in the parent class: see [Slots that a class changes](#slots-that-a-class-changes).
+It also shows which changes to an inherited slot are errors, and what the generators do with the others: see [Slots changed by a class](#slots-changed-by-a-class).
 
 ## Boolean metaslots
 
@@ -110,40 +110,24 @@ The SHACL generator emits all of it.
 The OWL generator gives each class its own `any_of` ranges; OWL subclassing requires the ranges of the parent classes too.
 The JSON Schema, Pydantic and Java generators do not support boolean expressions yet.
 
-## Slots that a class changes
+## Slots changed by a class
+
+A class can only narrow an inherited slot. `validate` reports an error for a class that gives an inherited slot:
+
+- a range that is not derived from the parent's range (`UnrelatedSlotRange`)
+- a cardinality that allows more or fewer values than the parent's, for example `multivalued: true` on a single-valued slot (`WiderSlotCardinality`)
+
+The generators don't support such schemas, so their output may not work.
 
 Some outputs pass what a parent class says about a field down to its subclasses: GraphQL interfaces, Scala abstract classes and traits, OWL class restrictions, and Pydantic classes.
-A `slot_usage` can change a slot in a way that these outputs can't pass down:
-
-```yaml
-classes:
-  Base:
-    slots:
-      - labels
-  Child:
-    is_a: Base
-    slot_usage:
-      labels:
-        multivalued: true
-
-slots:
-  labels:
-    range: string
-```
-
-In GraphQL, `Child` can't implement the `labels: String` field of `Base`'s interface with a list.
-In OWL, `Child` can't drop the `owl:maxCardinality 1` that it inherits from `Base`.
-
-So a parent describes a slot only when the versions of all its descendants fit.
-Otherwise the descendants describe their own versions:
+Some valid changes can't be passed down this way.
+Then a parent doesn't describe the slot, and its descendants describe their own versions:
 
 | Generator | When a descendant changes the slot's | Then |
 |-----------|--------------------------------------|------|
-| GraphQL   | name (`alias`), `multivalued`, or range to one that is not a subtype | The interface leaves out the field. Each type still has it. |
-| Scala     | Scala type, for example with `required`, `multivalued` or a narrower class range | The abstract class or trait leaves out the `def`. Subclasses declare it where it fits all their descendants. |
-| OWL       | `multivalued`, or range to one that is not derived from it | The class leaves out the `owl:maxCardinality 1` or the `owl:allValuesFrom`. Only the subclasses that keep it state it. |
+| GraphQL   | name (`alias`), or range to a type with another GraphQL type | The interface leaves out the field. Each type still has it. |
+| Scala     | Scala type, for example with `required` or a narrower class range | The abstract class or trait leaves out the `def`. Subclasses declare it where it fits all their descendants. |
 | OWL       | `slot_uri` | The subclass declares the new property, and states all restrictions of the slot on it, including those from the `slot_usage` of its parents. |
 | Pydantic  | JSON key (`alias`) | The subclass removes the inherited field, so loading rejects the old key. |
 
-`validate` warns about a class that gives an inherited slot a range that is not derived from the parent's range.
 See [Narrowing inherited ranges](200-limitations.md#narrowing-inherited-ranges).

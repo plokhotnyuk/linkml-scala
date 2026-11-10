@@ -26,6 +26,7 @@ import eu.neverblink.linkml.validation.{
   UnquotedStringDefault,
   UnrelatedSlotRange,
   UnwritableUri,
+  WiderSlotCardinality,
 }
 
 import scala.collection.immutable.VectorMap
@@ -1241,7 +1242,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "warn about a class that gives an inherited slot an unrelated range" in {
+    "report a class that gives an inherited slot an unrelated range" in {
       val schemaYaml =
         """id: https://example.org/vehicles/
           |name: vehicles
@@ -1320,7 +1321,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       // A subclass, a type with `typeof`, one of the `any_of` ranges, a member of a `union_of`
       // type, and the built-in types `ncname` for `string` and `uri` for `uriorcurie` narrow it
-      sv.lintProblems.collect { case p: UnrelatedSlotRange => p.infer() } shouldBe Seq(
+      sv.validationProblems.collect { case p: UnrelatedSlotRange => p.infer() } shouldBe Seq(
         UnrelatedSlotRange(
           location = IssueLocation(
             schemaId = Some(Uri("https://example.org/vehicles/")),
@@ -1333,11 +1334,9 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           parentRange = "'string'",
         ).infer(),
       )
-      // Warnings aren't validation problems
-      sv.validationProblems shouldBe empty
     }
 
-    "warn once about an unrelated range that several parents give" in {
+    "report once an unrelated range that several parents give" in {
       val schemaYaml =
         """id: https://example.org/once/
           |name: once
@@ -1371,8 +1370,106 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |      NEW:
           |""".stripMargin
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
-      sv.lintProblems.collect { case p: UnrelatedSlotRange => (p.className, p.slotName) } shouldBe
+      sv.validationProblems.collect { case p: UnrelatedSlotRange =>
+        (p.className, p.slotName)
+      } shouldBe
         Seq(("Car", "status"))
+    }
+
+    "report a class that allows more or fewer values for an inherited slot" in {
+      val schemaYaml =
+        """id: https://example.org/counts/
+          |name: counts
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: counts
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - label
+          |      - tags
+          |      - codes
+          |      - notes
+          |      - names
+          |      - title
+          |  Child:
+          |    tree_root: true
+          |    is_a: Base
+          |    slot_usage:
+          |      label:
+          |        multivalued: true
+          |      tags:
+          |        maximum_cardinality: 5
+          |      codes:
+          |        minimum_cardinality: 1
+          |      notes:
+          |        exact_cardinality: 2
+          |      names:
+          |        maximum_cardinality: 1
+          |      title:
+          |        required: true
+          |slots:
+          |  label:
+          |    range: string
+          |  tags:
+          |    range: string
+          |    multivalued: true
+          |    maximum_cardinality: 3
+          |  codes:
+          |    range: string
+          |    multivalued: true
+          |    minimum_cardinality: 2
+          |  notes:
+          |    range: string
+          |    multivalued: true
+          |    minimum_cardinality: 1
+          |    maximum_cardinality: 3
+          |  names:
+          |    range: string
+          |    multivalued: true
+          |  title:
+          |    range: string
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // An exact cardinality within the parent's limits, a lower maximum and `required` narrow it
+      sv.validationProblems.collect { case p: WiderSlotCardinality => p.infer() } shouldBe Seq(
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/counts/")),
+            jsonPointer = Some("/classes/Child/slot_usage/codes"),
+          ),
+          className = "Child",
+          slotName = "codes",
+          slotCardinality = "1..*",
+          parentName = "Base",
+          parentCardinality = "2..*",
+        ).infer(),
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/counts/")),
+            jsonPointer = Some("/classes/Child/slot_usage/label"),
+          ),
+          className = "Child",
+          slotName = "label",
+          slotCardinality = "0..*",
+          parentName = "Base",
+          parentCardinality = "0..1",
+        ).infer(),
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/counts/")),
+            jsonPointer = Some("/classes/Child/slot_usage/tags"),
+          ),
+          className = "Child",
+          slotName = "tags",
+          slotCardinality = "0..5",
+          parentName = "Base",
+          parentCardinality = "0..3",
+        ).infer(),
+      )
     }
 
     "warn about a string ifabsent without quotes in the root schema" in {

@@ -76,7 +76,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
             |    is_a: Base
             |    slot_usage:
             |      labels:
-            |        multivalued: true
+            |        alias: tags
             |  Empty:
             |    abstract: true
             |  Filled:

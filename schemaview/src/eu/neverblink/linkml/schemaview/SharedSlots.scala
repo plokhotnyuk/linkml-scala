@@ -7,8 +7,8 @@ import scala.collection.mutable
   * In many formats a subclass inherits what its parent says about a field: the fields of a GraphQL
   * interface, the `def`s of a Scala abstract class, the restrictions of an OWL class. The subclass
   * can only narrow such a field in the ways the format allows. A `slot_usage` can change a slot in
-  * other ways, for example make it multivalued, or give it another alias or `slot_uri`. Then the
-  * parent must not describe the slot, and the descendants describe their own versions instead.
+  * other ways, for example give it another alias or `slot_uri`. Then the parent must not describe
+  * the slot, and the descendants describe their own versions instead.
   *
   * @param compatible
   *   Whether a descendant's version of a slot (the second argument) fits what the format passes

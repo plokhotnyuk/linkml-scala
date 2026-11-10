@@ -401,7 +401,9 @@ export type SchemaError =
   | MultipleTreeRoots
   | NonAsciiName
   | NonUniqueName
-  | UndefinedPrefix;
+  | UndefinedPrefix
+  | UnrelatedSlotRange
+  | WiderSlotCardinality;
 
 export type SchemaFatal =
   | CyclicReference
@@ -487,7 +489,8 @@ export type SchemaIssue =
   | UnknownStringReference
   | UnquotedStringDefault
   | UnrelatedSlotRange
-  | UnwritableUri;
+  | UnwritableUri
+  | WiderSlotCardinality;
 
 /** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel. Where the underlying parser reported a position, it is carried in `location.code_region`. */
 export interface SchemaParseError {
@@ -528,7 +531,6 @@ export type SchemaWarning =
   | UndeclaredCuriePrefix
   | UndefinedDefaultRange
   | UnquotedStringDefault
-  | UnrelatedSlotRange
   | UnwritableUri;
 
 /** A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python. */
@@ -703,7 +705,7 @@ export interface UnrelatedSlotRange {
   parent_range: string;
   /**
    * severity: The severity of the issue.
-   * @defaultValue "WARNING"
+   * @defaultValue "ERROR"
    */
   severity: IssueSeverity;
   /** slot name */
@@ -731,6 +733,33 @@ export interface UnwritableUri {
   severity: IssueSeverity;
   /** URI */
   uri: string;
+}
+
+/** A class allows more or fewer values for an inherited slot than a parent does, with `multivalued`, `minimum_cardinality`, `maximum_cardinality` or `exact_cardinality`. A class can only narrow the number of values that a parent allows. */
+export interface WiderSlotCardinality {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "WiderSlotCardinality";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** parent cardinality: The number of values that the parent allows, as `min..max`, with `*` for no maximum. */
+  parent_cardinality: string;
+  /** parent name */
+  parent_name: string;
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
+  severity: IssueSeverity;
+  /** slot cardinality: The number of values that the class allows, as `min..max`, with `*` for no maximum. */
+  slot_cardinality: string;
+  /** slot name */
+  slot_name: string;
 }
 
 /** Issue severity: The severity of an issue found during the validation of a LinkML schema. */

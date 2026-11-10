@@ -37,7 +37,7 @@ These features work differently in ohi LinkML than in the LinkML specification a
 These features follow the LinkML specification, while LinkML-Python works differently:
 
 - [Boolean metaslots in `slot_usage`](#boolean-metaslots-in-slot_usage): a `slot_usage` can turn `required` or `multivalued` on, but not off
-- [Narrowing inherited ranges](#narrowing-inherited-ranges): `validate` warns about a class that gives an inherited slot an unrelated range
+- [Narrowing inherited ranges](#narrowing-inherited-ranges): `validate` reports an error for a class that gives an inherited slot an unrelated range
 
 ## Boolean expressions in SHACL
 
@@ -65,9 +65,11 @@ See [Boolean metaslots](/docs/slot-usage-inheritance/#boolean-metaslots) for det
 
 The LinkML specification only lets a class narrow the range of an inherited slot: to a subclass of it, or to a type with it as a `typeof` ancestor.
 ohi LinkML also accepts a member of a `union_of` type, and the built-in types that hold only values of another one: `ncname` for `string`, and `uri` or `curie` for `uriorcurie`. The LinkML metamodel itself narrows `string` to `ncname` this way.
-`validate` warns with `UnrelatedSlotRange` about any other range, such as an enum in place of `string`. LinkML-Python 1.12.1 accepts it without a warning.
+`validate` reports an error with `UnrelatedSlotRange` for any other range, such as an enum in place of `string`.
+It also reports an error with `WiderSlotCardinality` for a class that allows more or fewer values than a parent, such as with `multivalued: true` on a single-valued slot.
+LinkML-Python 1.12.1 accepts both without a warning.
 
-See [Slots that a class changes](/docs/slot-usage-inheritance/#slots-that-a-class-changes) for what the generators do with such a slot.
+See [Slots changed by a class](/docs/slot-usage-inheritance/#slots-changed-by-a-class).
 
 ## Imports
 

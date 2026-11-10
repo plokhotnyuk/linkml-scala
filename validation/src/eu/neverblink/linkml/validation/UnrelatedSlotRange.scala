@@ -48,12 +48,12 @@ final case class UnrelatedSlotRange(
     @named("parent_range")
     parentRange: String,
     @serializeDefault
-    severity: IssueSeverity = IssueSeverity.Warning,
+    severity: IssueSeverity = IssueSeverity.Error,
     @named("slot_name")
     slotName: String,
     @named("slot_range")
     slotRange: String,
-) extends SchemaWarning {
+) extends SchemaError {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -67,7 +67,7 @@ final case class UnrelatedSlotRange(
       details = inferOptional(
         "details",
         details,
-        "Class '" + className + "' gives slot '" + slotName + "' the range " + slotRange + ", which is not derived from the range " + parentRange + " of its parent '" + parentName + "'. A class can only narrow an inherited range: to a subclass of it, or to a type with it as a 'typeof' ancestor. Generators whose classes inherit fields, like those for GraphQL, Scala and OWL, don't describe the slot or its range in the parents.",
+        "Class '" + className + "' gives slot '" + slotName + "' the range " + slotRange + ", which is not derived from the range " + parentRange + " of its parent '" + parentName + "'. A class can only narrow an inherited range.",
       ),
       message = inferOptional(
         "message",

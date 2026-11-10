@@ -149,7 +149,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     *   - the same wrapper (`Option`, `Seq` or `Map`) around a subtype.
     *
     * A subtype is a type derived from the ancestor's type (such as `ncname` for `string`), or a
-    * subclass when the ancestor's field uses the class's trait, not its case class.
+    * subclass when the ancestor's field uses the class's trait, not its case class. `validate`
+    * reports a range that is not derived from the ancestor's as an error, so this doesn't check it.
     */
   private def overrides(
       own: AttributeView,
@@ -157,8 +158,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       options: ScalaGeneratorOptions,
   ): Boolean =
     makeTypedDefault(own, options).typeName == makeTypedDefault(their, options).typeName ||
-      InlineType(own.slotView) == InlineType(their.slotView) &&
-      their.slotView.hasRangeDerivedFrom(own.slotView) && (own match {
+      InlineType(own.slotView) == InlineType(their.slotView) && (own match {
         case _: TypeAttributeView => their.isInstanceOf[TypeAttributeView]
         case _: ClassReferenceAttributeView => their.isInstanceOf[ClassReferenceAttributeView]
         case c: ClassInlineAttributeView =>

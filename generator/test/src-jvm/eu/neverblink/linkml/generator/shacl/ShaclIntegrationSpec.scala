@@ -32,10 +32,6 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       "mixinFacets",
       "minimal",
     ) -> "Thing stores `value` as `alt:number`, but the WithRequired mixin requires it as `:value`",
-    (
-      "multivaluedOverride",
-      "many",
-    ) -> "A multivalued slot in a subclass is single-valued in its parent",
   )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
   "ShaclGenerator" should {

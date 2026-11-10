@@ -83,27 +83,23 @@ class GraphQlGenerator(using sv: SchemaView)
 
   /** A class that implements an interface must have each of its fields, with the same name and the
     * same type or a subtype of it. A field is a subtype when it adds `!`, or when its type is an
-    * object or interface that implements the interface's type. A list is not a subtype of a single
-    * value.
+    * object or interface that implements the interface's type. `validate` reports a class that
+    * widens the range or cardinality of a slot as an error, so this checks only the name and that a
+    * class range stays a class.
     */
   private lazy val sharedFields = new SharedSlots((own, their) =>
-    slotName(own.slotView) == slotName(their.slotView) &&
-      own.slotView.slot.multivalued == their.slotView.slot.multivalued && (
-        fieldRange(own) == fieldRange(their) || (own match {
-          case _: ClassAttributeView =>
-            their.isInstanceOf[ClassAttributeView] &&
-            their.slotView.hasRangeDerivedFrom(own.slotView)
-          case _ => false
-        })
-      ),
+    slotName(own.slotView) == slotName(their.slotView) && (
+      fieldRange(own) == fieldRange(their) || own.isInstanceOf[ClassAttributeView] &&
+        their.isInstanceOf[ClassAttributeView]
+    ),
   )
 
   /** Generate a GraphQL definition corresponding to the provided class, or None if the class is
     * linkml:Any.
     *
     * The interface of a class leaves out the fields that a descendant changes in a way that does
-    * not give a subtype, such as a field that a `slot_usage` makes multivalued. Each class still
-    * has all its fields.
+    * not give a subtype, such as a field that a `slot_usage` renames with an alias. Each class
+    * still has all its fields.
     */
   def generateClass(cls: ClassView)(using GraphQlGeneratorOptions): Iterable[GraphQlDefinition] = {
     lazy val fields =

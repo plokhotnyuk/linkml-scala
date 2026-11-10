@@ -502,7 +502,7 @@ classes:
           These slots will not be included: {slot_names}
 
   UnrelatedSlotRange:
-    is_a: SchemaWarning
+    is_a: SchemaError
     description: >-
       A class gives an inherited slot a range that is not derived from the range of a parent. The
       LinkML specification only allows a class to narrow an inherited range: to a subclass of it,
@@ -539,9 +539,47 @@ classes:
         equals_expression: >-
           Class '{class_name}' gives slot '{slot_name}' the range {slot_range}, which is not
           derived from the range {parent_range} of its parent '{parent_name}'. A class can only
-          narrow an inherited range: to a subclass of it, or to a type with it as a 'typeof'
-          ancestor. Generators whose classes inherit fields, like those for GraphQL, Scala and
-          OWL, don't describe the slot or its range in the parents.
+          narrow an inherited range.
+
+  WiderSlotCardinality:
+    is_a: SchemaError
+    description: >-
+      A class allows more or fewer values for an inherited slot than a parent does, with
+      `multivalued`, `minimum_cardinality`, `maximum_cardinality` or `exact_cardinality`. A class
+      can only narrow the number of values that a parent allows.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      slot_cardinality:
+        range: string
+        required: true
+        title: slot cardinality
+        description: >-
+          The number of values that the class allows, as `min..max`, with `*` for no maximum.
+      parent_name:
+        range: string
+        required: true
+        title: parent name
+      parent_cardinality:
+        range: string
+        required: true
+        title: parent cardinality
+        description: >-
+          The number of values that the parent allows, as `min..max`, with `*` for no maximum.
+    slot_usage:
+      message:
+        equals_expression: >-
+          Class '{class_name}' allows {slot_cardinality} values for slot '{slot_name}', which is
+          wider than the {parent_cardinality} of its parent '{parent_name}'
+      details:
+        equals_expression: >-
+          Class '{class_name}' allows {slot_cardinality} values for slot '{slot_name}', which is
+          wider than the {parent_cardinality} of its parent '{parent_name}'. A class can only
+          narrow the number of values of an inherited slot.
 
   NonStandardSeparator:
     is_a: SchemaWarning

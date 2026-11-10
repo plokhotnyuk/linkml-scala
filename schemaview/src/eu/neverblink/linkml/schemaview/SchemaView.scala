@@ -370,7 +370,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   def elementOrder(el: Element): (Int, String) = (el.rank.getOrElse(Int.MaxValue), el.name)
 
-  /** Combine values for the `range` metaslot. The nearest range is used. `validate` warns with
+  /** Combine values for the `range` metaslot. The nearest range is used. `validate` reports
     * `UnrelatedSlotRange` when it isn't derived from the inherited one, as the spec requires.
     */
   // TODO COMPAT

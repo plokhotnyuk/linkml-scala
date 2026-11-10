@@ -19,7 +19,6 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UndeclaredCuriePrefix], "UndeclaredCuriePrefix"),
   typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
   typeDesignator.Member(classOf[UnquotedStringDefault], "UnquotedStringDefault"),
-  typeDesignator.Member(classOf[UnrelatedSlotRange], "UnrelatedSlotRange"),
   typeDesignator.Member(classOf[UnwritableUri], "UnwritableUri"),
 )
 abstract class SchemaWarning extends SchemaIssue {

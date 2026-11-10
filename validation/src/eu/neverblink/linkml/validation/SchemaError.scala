@@ -18,6 +18,8 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[NonAsciiName], "NonAsciiName"),
   typeDesignator.Member(classOf[NonUniqueName], "NonUniqueName"),
   typeDesignator.Member(classOf[UndefinedPrefix], "UndefinedPrefix"),
+  typeDesignator.Member(classOf[UnrelatedSlotRange], "UnrelatedSlotRange"),
+  typeDesignator.Member(classOf[WiderSlotCardinality], "WiderSlotCardinality"),
 )
 abstract class SchemaError extends SchemaIssue {
 

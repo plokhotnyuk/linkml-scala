@@ -65,8 +65,6 @@ class JavaRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "anyOfTypeOrClass" -> "objectWithoutName" -> classUnion,
     "importedOverride" -> "unaliasedLabel" ->
       "An alias set by a `slot_usage` adds a second property, as the field of the parent stays",
-    "multivaluedOverride" -> "many" ->
-      "A `slot_usage` that makes an inherited slot multivalued can't change the type of its field",
   )
 
   // Known expressiveness limitations
