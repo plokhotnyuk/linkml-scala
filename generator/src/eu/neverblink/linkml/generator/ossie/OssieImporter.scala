@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.ossie
 
-import eu.neverblink.linkml.generator.options.OssieImporterOptions
-import eu.neverblink.linkml.generator.SchemaImporter
+import eu.neverblink.linkml.generator.options.{ImportResult, OssieImporterOptions}
+import eu.neverblink.linkml.generator.{ImportWarnings, SchemaImporter}
 import eu.neverblink.linkml.generator.ossie.expression.*
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.{
@@ -15,13 +15,16 @@ import eu.neverblink.linkml.runtime.{
 }
 import eu.neverblink.linkml.schemaview.{Case, SchemaCodec}
 import eu.neverblink.linkml.yaml.DecodeError
-import org.virtuslab.yaml.{NodeOps, parseYaml}
+import org.virtuslab.yaml.{Node, NodeOps, parseYaml}
 
 import java.io.InputStream
 
 import scala.collection.immutable.VectorMap
 
-/** Reads an Apache Ossie (incubating) ontology and produces a LinkML schema. */
+/** Reads an Apache Ossie (incubating) ontology and produces a LinkML schema.
+  *
+  * Anything LinkML can't express is listed in [[OssieImporter.Result.warnings]].
+  */
 class OssieImporter extends SchemaImporter[OssieImporterOptions] {
 
   import OssieImporter.*
@@ -32,7 +35,24 @@ class OssieImporter extends SchemaImporter[OssieImporterOptions] {
       in: InputStream,
       options: OssieImporterOptions = OssieImporterOptions(),
   ): SchemaDefinition =
-    Conversion(decode(readUtf8(in)), options).schema
+    importWithWarnings(in, options).schema
+
+  def importWithWarnings(
+      in: InputStream,
+      options: OssieImporterOptions = OssieImporterOptions(),
+  ): Result =
+    Conversion(decode(readUtf8(in)), options).result
+
+  override def importResult(
+      in: InputStream,
+      options: OssieImporterOptions = OssieImporterOptions(),
+  ): ImportResult = {
+    val result = importWithWarnings(in, options)
+    ImportResult(
+      serializeSchema(result.schema, options.format, options.fullUris),
+      result.warnings,
+    )
+  }
 
   /** Parse and decode an ontology document. Accepts JSON too, since JSON is YAML.
     *
@@ -52,6 +72,9 @@ class OssieImporter extends SchemaImporter[OssieImporterOptions] {
 }
 
 object OssieImporter {
+
+  /** `warnings` has one line per kind of thing that could not be imported. */
+  final case class Result(schema: SchemaDefinition, warnings: Seq[String])
 
   /** The LinkML type behind each of Ossie's built-in value types. */
   private val linkmlTypes: Map[String, String] = Map(
@@ -81,6 +104,10 @@ object OssieImporter {
   /** One ontology file import. */
   private final class Conversion(ontology: OssieOntology, options: OssieImporterOptions) {
 
+    private val warnings = ImportWarnings()
+
+    import warnings.warn
+
     /** Concept name to LinkML element name. */
     private val elementNames: Map[String, String] = {
       val pairs = ontology.ontology.map(c => c.concept -> Case.baseToPascal(Case.base(c.concept)))
@@ -102,6 +129,9 @@ object OssieImporter {
       valueTypes.partition(c => permissibleValues(c).isDefined)
 
     private val typeNames: Set[String] = typeConcepts.map(c => elementNames(c.concept)).toSet
+
+    private val conceptsByName: Map[String, Concept] =
+      ontology.ontology.map(c => c.concept -> c).toMap
 
     /** The ontology's prefixes that the schema can declare as they are.
       *
@@ -156,7 +186,18 @@ object OssieImporter {
     /** The namespace of the schema's elements that have no `iri`. */
     private lazy val namespace: String = SchemaCodec.defaultNamespace(schemaId, None, Map.empty)
 
-    def schema: SchemaDefinition = {
+    def result: Result = Result(schema, warnings.lines)
+
+    private def schema: SchemaDefinition = {
+      ontology.requires.foreach(e => warn("Ontology-wide expression, which is not read", e))
+      ontology.ontologyMappings.foreach { m =>
+        val name = m match {
+          case Node.MappingNode(entries, _) =>
+            entries.collectFirst { case (Node.ScalarNode("name", _), Node.ScalarNode(n, _)) => n }
+          case _ => None
+        }
+        warn("Ontology mapping, which is not read", name.getOrElse("(no name)"))
+      }
       val classes = entityTypes.map(classOf)
       // Only a range can refer to Any, and the class is declared only when one does.
       val any = Option.when(
@@ -196,18 +237,32 @@ object OssieImporter {
         .filterNot(_ == BuiltInConcept.any)
         .map(name => elementNames.getOrElse(name, name))
       val declared = concept.relationships.map(r => r.name -> r).toMap
-      val requires = concept.requires.flatMap(Expression.parse)
       val conceptRef = Ref(concept.concept)
-      val required = requires.collect {
-        case Expression.Member(r, relationship) if r == conceptRef => relationship
+      // Only `Concept.relationship` over a relationship of this concept says something LinkML can.
+      val required = expressions(concept.concept, concept.requires).flatMap {
+        case (Expression.Member(r, relationship), _)
+            if r == conceptRef && declared.contains(relationship) =>
+          Some(relationship)
+        case (_, text) =>
+          cannotExpress(concept.concept, text)
+          None
       }.toSet
+      notRead(concept.concept, concept.derivedBy)
 
+      // An identifier made only of inherited relationships is left to the concept declaring them.
+      val inherited = inheritedRelationships(concept)
+      val unknownKeys = concept.identifyBy.filterNot(n => declared.contains(n) || inherited(n))
+      if (unknownKeys.nonEmpty)
+        warn(
+          "Identifier made of relationships the concept does not have",
+          s"${concept.concept}: ${concept.identifyBy.mkString(", ")}",
+        )
       val identifier = concept.identifyBy match {
         case Seq(only) if declared.get(only).exists(canIdentify) => Some(only)
         case _ => None
       }
       val compoundKey = Option.when(
-        identifier.isEmpty && concept.identifyBy.exists(declared.contains),
+        identifier.isEmpty && concept.identifyBy.exists(declared.contains) && unknownKeys.isEmpty,
       )(
         UniqueKey(
           uniqueKeyName = uniqueKeyName,
@@ -225,11 +280,28 @@ object OssieImporter {
         mixins = parents.dropRight(1).map(Reference.apply),
         attributes = VectorMap.from(
           concept.relationships.zipWithIndex.map((r, i) =>
-            attributeOf(name, r, required(r.name), identifier.contains(r.name), i + 1),
+            attributeOf(
+              concept.concept,
+              name,
+              r,
+              required(r.name),
+              identifier.contains(r.name),
+              i + 1,
+            ),
           ),
         ),
         uniqueKeys = compoundKey.map(uniqueKeyName -> _).toMap,
       )
+    }
+
+    /** The names of the relationships a concept gets from the concepts it extends. */
+    private def inheritedRelationships(concept: Concept): Set[String] = {
+      val seen = collection.mutable.Set(concept.concept)
+      def walk(c: Concept): Iterator[String] =
+        c.extendsConcepts.iterator.filter(seen.add).flatMap(conceptsByName.get).flatMap { parent =>
+          parent.relationships.iterator.map(_.name) ++ walk(parent)
+        }
+      walk(concept).toSet
     }
 
     /** Whether a relationship can become LinkML's `identifier`, which has to be a single-valued
@@ -246,6 +318,7 @@ object OssieImporter {
       * is its domain.
       */
     private def attributeOf(
+        conceptName: String,
         className: String,
         relationship: Relationship,
         required: Boolean,
@@ -253,12 +326,19 @@ object OssieImporter {
         rank: Int,
     ): (String, SlotDefinition) = {
       val name = Case.base(relationship.name)
+      val owner = s"$conceptName.${relationship.name}"
       // We don't support multi-role relationships yet, so we only look at the first one.
       // TODO: consider synthesizing a LinkML class for the relationship and using it as the range.
       val role = relationship.roles.headOption
-      val constraints = role
-        .map(r => Constraints.from(Ref(r.ref), relationship.requires.flatMap(Expression.parse)))
-        .getOrElse(Constraints())
+      relationship.roles.drop(1).foreach { r =>
+        warn("Role after the first, as a slot has only one range", s"$owner: ${r.ref}")
+      }
+      notRead(owner, relationship.derivedBy)
+      val constraints = constraintsOf(
+        owner,
+        role.fold(Ref(""))(r => Ref(r.ref)),
+        relationship.requires,
+      )
       // Try to get a title from the verbalization, but only if it is not empty
       // and not the same as the space-cased relationship name.
       val title = relationship.verbalizes.headOption
@@ -284,7 +364,8 @@ object OssieImporter {
       )
     }
 
-    private def enumOf(concept: Concept): EnumDefinition =
+    private def enumOf(concept: Concept): EnumDefinition = {
+      warnAboutValueType(concept)
       EnumDefinition(
         name = elementNames(concept.concept),
         enumUri = concept.iri.map(uriOf),
@@ -293,10 +374,17 @@ object OssieImporter {
           permissibleValues(concept).getOrElse(Nil).map(v => v -> PermissibleValue(text = v)),
         ),
       )
+    }
 
     private def typeOf(concept: Concept): TypeDefinition = {
-      val constraints =
-        Constraints.from(Ref(concept.concept), concept.requires.flatMap(Expression.parse))
+      val constraints = constraintsOf(concept.concept, Ref(concept.concept), concept.requires)
+      warnAboutValueType(concept)
+      concept.extendsConcepts.drop(1).foreach { p =>
+        warn(
+          "Parent of a value type after the first, as a type has only one",
+          s"${concept.concept}: $p",
+        )
+      }
       // There is no LinkML type for Ossie's Any. We write `base: Any`, which LinkML does not
       // recognize, and the Ossie generator turns an unrecognized base back into Any.
       val overAny = concept.extendsConcepts.headOption.contains(BuiltInConcept.any)
@@ -319,7 +407,11 @@ object OssieImporter {
       linkmlTypes.getOrElse(
         concept, {
           val element = elementNames.getOrElse(concept, concept)
-          if typeNames.contains(element) then element else "string"
+          if typeNames.contains(element) then element
+          else {
+            warn("Value type based on something other than a value type, read as String", concept)
+            "string"
+          }
         },
       )
 
@@ -327,6 +419,19 @@ object OssieImporter {
     private def rangeOf(concept: String): String =
       if concept == BuiltInConcept.any then anyClass
       else linkmlTypes.getOrElse(concept, elementNames.getOrElse(concept, concept))
+
+    /** Warns about what a value type has that neither an enum nor a type can hold. */
+    private def warnAboutValueType(concept: Concept): Unit = {
+      notRead(concept.concept, concept.derivedBy)
+      concept.relationships.foreach { r =>
+        warn("Relationship of a value type", s"${concept.concept}.${r.name}")
+      }
+      if (concept.identifyBy.nonEmpty)
+        warn(
+          "Identifier of a value type",
+          s"${concept.concept}: ${concept.identifyBy.mkString(", ")}",
+        )
+    }
 
     /** The values a value type allows, if it is the enumerated kind. */
     private def permissibleValues(concept: Concept): Option[Seq[String]] =
@@ -337,6 +442,43 @@ object OssieImporter {
           }
         case _ => None
       }
+
+    /** The expressions that can be read, each with its text. Warns about the others.
+      *
+      * @param owner
+      *   The concept or relationship the expressions belong to, for the warning
+      */
+    private def expressions(
+        owner: String,
+        texts: Seq[String],
+    ): Seq[(expression.Expression, String)] =
+      texts.flatMap { text =>
+        val parsed = Expression.parse(text)
+        if parsed.isEmpty then warn("Expression that cannot be read", s"$owner: $text")
+        parsed.map(_ -> text)
+      }
+
+    /** The constraints that expressions place on `ref`. Warns about the expressions that are not
+      * one.
+      */
+    private def constraintsOf(owner: String, ref: Ref, texts: Seq[String]): Constraints = {
+      val read = expressions(owner, texts)
+      val (constraints, unused) = Constraints.from(ref, read.map(_._1))
+      // Expressions that read the same are interchangeable, so each unused one takes the first
+      // text left that reads like it.
+      val left = collection.mutable.ArrayBuffer.from(read)
+      unused.foreach { e =>
+        val i = left.indexWhere(_._1 == e)
+        cannotExpress(owner, left.remove(i)._2)
+      }
+      constraints
+    }
+
+    private def cannotExpress(owner: String, text: String): Unit =
+      warn("Expression that LinkML cannot express", s"$owner: $text")
+
+    private def notRead(owner: String, derivedBy: Seq[String]): Unit =
+      derivedBy.foreach(e => warn("Derivation (`derived_by`), which is not read", s"$owner: $e"))
   }
 
   private def byName[T <: Element](elements: Seq[T]): Map[String, T] =

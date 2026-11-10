@@ -214,6 +214,24 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         """)).enums("CancelationCode").permissibleValues.keys.toSeq shouldBe Seq("A", "B", "C")
     }
 
+    "read keywords in any case, and comparisons with = as well as ==" in {
+      val enums = importOf(ossie("""
+        |ontology:
+        |  - concept: Lower
+        |    type: ValueType
+        |    extends: [String]
+        |    requires:
+        |      - Lower in ('a', 'b')
+        |  - concept: Sql
+        |    type: ValueType
+        |    extends: [String]
+        |    requires:
+        |      - Sql = 'x' or Sql = 'y'
+        """)).enums
+      enums("Lower").permissibleValues.keys.toSeq shouldBe Seq("a", "b")
+      enums("Sql").permissibleValues.keys.toSeq shouldBe Seq("x", "y")
+    }
+
     "unescape a doubled apostrophe in a permissible value" in {
       importOf(ossie("""
         |ontology:
@@ -883,6 +901,100 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         """)).classes("Sub")
       cls.attributes shouldBe empty
       cls.uniqueKeys shouldBe empty
+    }
+  }
+
+  "what cannot be imported" should {
+    "be listed, grouped by kind" in {
+      val result = OssieImporter().importWithWarnings(stream(ossie("""
+        |requires:
+        |  - Person.age >= 0
+        |ontology_mappings:
+        |  - name: warehouse
+        |    semantic_model: {}
+        |    concept_mappings: []
+        |ontology:
+        |  - concept: Person
+        |    type: EntityType
+        |    requires:
+        |      - Person.name
+        |      - Person.nickname
+        |      - NOT (Person.name)
+        |    derived_by:
+        |      - SELECT * FROM people
+        |    relationships:
+        |      - name: name
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Person} has name {String}']
+        |      - name: age
+        |        roles: [{concept: Integer}]
+        |        multiplicity: ManyToOne
+        |        requires:
+        |          - Integer >= 0
+        |          - Integer >= 1
+        |          - Integer <> 5
+        |        verbalizes: ['{Person} has age {Integer}']
+        |      - name: marriedTo
+        |        roles: [{concept: Person, name: spouse}, {concept: Date}]
+        |        verbalizes: ['{Person} is married to {Person:spouse}']
+        |  - concept: Code
+        |    type: ValueType
+        |    extends: [String, Integer]
+        |    requires:
+        |      - Code IN ('A', 'B')
+        |      - REGEXP_LIKE(Code, '^[A-Z]$')
+        |""")))
+      result.schema.classes("Person").attributes("name").required shouldBe true
+      result.schema.classes("Person").attributes("age").minimumValue.map(_.value) shouldBe
+        Some("0")
+      result.warnings shouldBe Seq(
+        "Ontology-wide expression, which is not read (1): Person.age >= 0",
+        "Ontology mapping, which is not read (1): warehouse",
+        "Expression that cannot be read (2): Person: NOT (Person.name); Person.age: Integer <> 5",
+        "Expression that LinkML cannot express (3): Person: Person.nickname; " +
+          "Person.age: Integer >= 1; Code: Code IN ('A', 'B')",
+        "Derivation (`derived_by`), which is not read (1): Person: SELECT * FROM people",
+        "Role after the first, as a slot has only one range (1): Person.marriedTo: Date",
+        "Parent of a value type after the first, as a type has only one (1): Code: Integer",
+      )
+    }
+
+    "be nothing for an ontology the generator wrote" in {
+      for c <- OssieCases.all do
+        withClue(c.label) {
+          OssieImporter().importWithWarnings(stream(yamlOf(c))).warnings shouldBe empty
+        }
+    }
+
+    "come with the schema in the bindings' result" in {
+      val result = OssieImporter().importResult(stream(ossie("""
+        |ontology:
+        |  - concept: Code
+        |    type: ValueType
+        |    requires: [Code LIKE 'A%']
+        |""")))
+      result.warnings shouldBe Seq("Expression that cannot be read (1): Code: Code LIKE 'A%'")
+      result.schema should include("Code")
+    }
+  }
+
+  "the YAML" should {
+    "allow a single-entry mapping inside a flow sequence" in {
+      val schema = importOf(ossie("""
+        |ontology:
+        |  - concept: LineNr
+        |    type: ValueType
+        |    extends: [ Integer ]
+        |  - concept: Line
+        |    type: EntityType
+        |    relationships:
+        |      - name: nr
+        |        roles: [ concept: LineNr ]
+        |        multiplicity: ManyToOne
+        |        verbalizes: [ '{Line} has nr {LineNr}' ]
+        |"""))
+      schema.classes("Line").attributes("nr").range shouldBe Some(Reference("LineNr"))
     }
   }
 

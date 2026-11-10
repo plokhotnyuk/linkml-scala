@@ -8,7 +8,7 @@ import eu.neverblink.linkml.generator.options.{
   RdfFormat,
   SomeValuesFrom,
 }
-import eu.neverblink.linkml.generator.SchemaImporter
+import eu.neverblink.linkml.generator.{ImportWarnings, SchemaImporter}
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.ClassExpr.Bound
 import eu.neverblink.linkml.generator.owl.OwlAxiomIndex.*
@@ -271,11 +271,9 @@ object OwlImporter {
       options.schemaId.fold(config)(id => config.copy(schemaId = Some(id)))
     }
 
-    private val warnings = mutable.LinkedHashMap.empty[String, mutable.ArrayBuffer[String]]
+    private val warnings = ImportWarnings()
 
-    /** Warnings are grouped by kind to keep the report short. */
-    private def warn(kind: String, detail: String): Unit =
-      warnings.getOrElseUpdate(kind, mutable.ArrayBuffer.empty) += detail
+    private def warn(kind: String, detail: String): Unit = warnings.warn(kind, detail)
 
     private val index = OwlAxiomIndex(ontology.axioms)
     import index.*
@@ -1479,12 +1477,7 @@ object OwlImporter {
       }
       Result(
         schema.copy(prefixes = prefixes),
-        warnings.toSeq.map { (kind, details) =>
-          val shown = details.distinct.take(5).mkString("; ")
-          val more =
-            if details.distinct.size > 5 then s"; and ${details.distinct.size - 5} more" else ""
-          s"$kind (${details.distinct.size}): $shown$more"
-        },
+        warnings.lines,
       )
     }
 

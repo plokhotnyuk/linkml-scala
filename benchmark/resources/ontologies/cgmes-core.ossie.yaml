@@ -1,7 +1,7 @@
 # Source: ../schemas/cgmes-core.yml, from https://github.com/Netbeheer-Nederland/cgmes/blob/bb2763d052185579241464791344038f3ba5ffd0/schemas/core-equipment.yaml, converted with `linkml-scala generate ossie`
 # Original author: Netbeheer Nederland
 # Original license: Apache 2.0
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: CoreEquipmentProfile
 description: This vocabulary is describing the core equipment profile from IEC 61970-600-2.
 prefixes:

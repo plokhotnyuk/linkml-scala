@@ -23,7 +23,7 @@ class ConversionChainSpec extends AnyWordSpec, Matchers {
 
   /** Person and Car with a `name` each, both with `iri` or neither. */
   private def personAndCar(iri: String): String =
-    s"""version: 0.2.0.dev0
+    s"""version: 0.3.0.dev0
        |name: names
        |ontology:
        |  - concept: Person

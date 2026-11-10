@@ -8,7 +8,7 @@ import java.nio.file.Files
 class FromSpec extends AnyWordSpec, Matchers {
 
   private val ontology =
-    """version: 0.2.0.dev0
+    """version: 0.3.0.dev0
       |name: flights
       |description: A tiny ontology.
       |ontology:

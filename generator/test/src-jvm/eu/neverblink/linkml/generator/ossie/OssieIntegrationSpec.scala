@@ -130,7 +130,7 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, BeforeAndAfterAll, Mod
 
     "be rejected when it is neither, so we know the $ref is live and not silently skipped" in {
       val errors = OssieSchema.validate(
-        """version: 0.2.0.dev0
+        """version: 0.3.0.dev0
           |name: spec
           |ai_context:
           |  - not a string or an object

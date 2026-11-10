@@ -1,4 +1,4 @@
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: prov
 prefixes:
   prov: http://www.w3.org/ns/prov#

@@ -78,11 +78,26 @@ class ExpressionSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
 
     "report the name it actually found" in {
       parsed("IntegerX >= 5").ref shouldBe Ref("IntegerX")
-      Constraints.from(Ref("Integer"), Seq(parsed("IntegerX >= 5"))) shouldBe Constraints()
+      val other = parsed("IntegerX >= 5")
+      Constraints.from(Ref("Integer"), Seq(other)) shouldBe (Constraints(), Seq(other))
+    }
+
+    "read keywords in any case" in {
+      parsed("Status in ('A')") shouldBe InList(Ref("Status"), Seq(Literal.Text("A")))
+      parsed("Code == 'A' or Code == 'B'") shouldBe
+        InList(Ref("Code"), Seq(Literal.Text("A"), Literal.Text("B")))
+      parsed("regexp_like(S, '^x')") shouldBe RegexpLike(Ref("S"), Literal.Text("^x"))
+    }
+
+    "read SQL's = like ==" in {
+      parsed("Code = 'A' OR Code == 'B'") shouldBe
+        InList(Ref("Code"), Seq(Literal.Text("A"), Literal.Text("B")))
     }
 
     "refuse a shape it does not write" in {
       Expression.parse("Integer <> 3") shouldBe None
+      Expression.parse("NOT (Status IN ('A'))") shouldBe None
+      Expression.parse("Integer == 3") shouldBe None
       Expression.parse("COUNT(Integer) > 1") shouldBe None
       Expression.parse("Integer >= ") shouldBe None
       Expression.parse("") shouldBe None
@@ -105,6 +120,21 @@ class ExpressionSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
 
     "not be fooled by REGEXP_LIKE used as a name" in {
       parsed("REGEXP_LIKE.x") shouldBe Member(Ref("REGEXP_LIKE"), "x")
+    }
+  }
+
+  "constraints" should {
+    "keep the first of two bounds or patterns, and give back the rest" in {
+      val in = parsed("Code IN ('A')")
+      val regex = parsed("REGEXP_LIKE(Code, 'x')")
+      val regex2 = parsed("REGEXP_LIKE(Code, 'y')")
+      val min = parsed("Code >= 1")
+      val min2 = parsed("Code >= 2")
+      Constraints.from(Ref("Code"), Seq(in, min, regex, min2, regex2)) shouldBe
+        (
+          Constraints(minimumValue = Some(LinkmlAny("1")), pattern = Some("x")),
+          Seq(in, min2, regex2),
+        )
     }
   }
 
@@ -156,10 +186,10 @@ class ExpressionSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
     "keep constraints attached to the name they were written over" in {
       forAll(ExpressionGen.ref, ExpressionGen.ref, ExpressionGen.linkmlSafeLiteral) { (a, b, v) =>
         val written = Constraints(minimumValue = Some(v.toLinkml)).render(a)
-        val read = Constraints.from(a, written.map(_.render).flatMap(Expression.parse))
+        val (read, _) = Constraints.from(a, written.map(_.render).flatMap(Expression.parse))
         read.minimumValue.map(_.value) shouldBe Some(v.toLinkml.value)
         if a != b then
-          Constraints.from(b, written.map(_.render).flatMap(Expression.parse)) shouldBe
+          Constraints.from(b, written.map(_.render).flatMap(Expression.parse))._1 shouldBe
             Constraints()
       }
     }

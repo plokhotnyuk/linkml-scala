@@ -40,6 +40,8 @@ final case class Role(concept: String, name: Option[String] = None) {
   *   The roles after the first. Empty for a unary relationship.
   * @param verbalizes
   *   How to say a link out loud, e.g. `{Person} earns {Salary}`. Ossie requires at least one.
+  * @param derivedBy
+  *   Not imported, only read to warn about it.
   */
 final case class Relationship(
     name: String,
@@ -49,6 +51,8 @@ final case class Relationship(
     multiplicity: Option[Multiplicity] = None,
     requires: Seq[String] = Nil,
     verbalizes: Seq[String],
+    @named("derived_by")
+    derivedBy: Seq[String] = Nil,
 ) {
 
   /** What this relationship says, ignoring how it is worded.
@@ -67,6 +71,8 @@ final case class Relationship(
   *   Supertypes.
   * @param identifyBy
   *   Names of the relationships forming this concept's preferred identifier.
+  * @param derivedBy
+  *   Not imported, only read to warn about it.
   */
 final case class Concept(
     concept: String,
@@ -80,6 +86,8 @@ final case class Concept(
     identifyBy: Seq[String] = Nil,
     requires: Seq[String] = Nil,
     relationships: Seq[Relationship] = Nil,
+    @named("derived_by")
+    derivedBy: Seq[String] = Nil,
 )
 
 /** A whole Ossie ontology document.
@@ -92,6 +100,10 @@ final case class Concept(
   *   object.
   * @param prefixes
   *   Namespaces that the `iri` QNames of concepts and relationships expand against.
+  * @param requires
+  *   Not imported, only read to warn about it.
+  * @param ontologyMappings
+  *   Not imported, only read to warn about it.
   */
 final case class OssieOntology(
     @serializeDefault
@@ -102,10 +114,13 @@ final case class OssieOntology(
     aiContext: Option[Node] = None,
     prefixes: Map[String, String] = Map.empty,
     ontology: Seq[Concept],
+    requires: Seq[String] = Nil,
+    @named("ontology_mappings")
+    ontologyMappings: Seq[Node] = Nil,
 )
 
 object OssieOntology {
-  val specVersion = "0.2.0.dev0"
+  val specVersion = "0.3.0.dev0"
 
   private given nodeCodec: LinkmlYamlCodec[Node] = new LinkmlYamlCodec[Node] {
     override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): Node = node

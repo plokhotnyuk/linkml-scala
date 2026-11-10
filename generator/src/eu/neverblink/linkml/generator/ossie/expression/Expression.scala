@@ -5,11 +5,13 @@ import fastparse.NoWhitespace.given
 
 /** One expression of the SQL-like expression language used in the Ossie ontology specification.
   *
-  * This is a model of a subset of the language, as supported in ohi LinkML. As of Ossie 0.2.0 the
-  * language has no formal grounding, so this is rough in places. We will try to make it more robust
-  * when the language is better defined.
+  * This is a model of a subset of the language, as supported in ohi LinkML. As of Ossie 0.3.0 the
+  * language has no formal grounding for ontologies (`core-spec/expression_language.md` covers the
+  * logical layer only), so this is rough in places. We will try to make it more robust when the
+  * language is better defined.
   *
-  * We ignore unparseable expressions, or those that we don't support yet.
+  * Keywords are read in any case, as in SQL. The importer warns about expressions it cannot read,
+  * or those that we don't support yet.
   */
 private[ossie] sealed trait Expression {
 
@@ -28,7 +30,7 @@ private[ossie] object Expression {
   }
 
   /** `Ref IN ('a', 'b')` - how an enumerated value type states the values it allows. Also read from
-    * `Ref == 'a' OR Ref == 'b'`, but always written as `IN`.
+    * `Ref == 'a' OR Ref = 'b'`, but always written as `IN`.
     */
   final case class InList(ref: Ref, values: Seq[Literal.Text]) extends Expression {
     override def render: String =
@@ -85,12 +87,12 @@ private[ossie] object Expression {
   private def member[$: P]: P[Member] = P(ref ~ "." ~ ident).map(Member.apply)
 
   private def inList[$: P]: P[InList] =
-    P(ref ~ ws1 ~ "IN" ~ ws ~ "(" ~ ws ~ literalStr.rep(sep = ws ~ "," ~ ws) ~ ws ~ ")")
+    P(ref ~ ws1 ~ IgnoreCase("IN") ~ ws ~ "(" ~ ws ~ literalStr.rep(sep = ws ~ "," ~ ws) ~ ws ~ ")")
       .map(InList.apply)
 
-  /** `Ref == 'a' OR Ref == 'b'`, with the same name in every comparison. */
+  /** `Ref == 'a' OR Ref = 'b'`, with the same name in every comparison. SQL compares with `=`. */
   private def equalsAny[$: P]: P[InList] =
-    P((ref ~ ws ~ "==" ~ ws ~ literalStr).rep(min = 1, sep = ws1 ~ "OR" ~ ws1))
+    P((ref ~ ws ~ ("==" | "=") ~ ws ~ literalStr).rep(min = 1, sep = ws1 ~ IgnoreCase("OR") ~ ws1))
       .filter(cs => cs.forall(_._1 == cs.head._1))
       .map(cs => InList(cs.head._1, cs.map(_._2)))
 
@@ -99,7 +101,7 @@ private[ossie] object Expression {
   private def atMost[$: P]: P[AtMost] = P(ref ~ ws ~ "<=" ~ ws ~ value).map(AtMost.apply)
 
   private def regexpLike[$: P]: P[RegexpLike] =
-    P("REGEXP_LIKE" ~ ws ~ "(" ~ ws ~ ref ~ ws ~ "," ~ ws ~ literalStr ~ ws ~ ")").map(
+    P(IgnoreCase("REGEXP_LIKE") ~ ws ~ "(" ~ ws ~ ref ~ ws ~ "," ~ ws ~ literalStr ~ ws ~ ")").map(
       RegexpLike.apply,
     )
 

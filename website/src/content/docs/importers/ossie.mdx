@@ -17,7 +17,7 @@ import { Description, Options, Usage } from '../../../components/converter';
 
 ## Mapping Ossie to LinkML
 
-The importer reads [Apache Ossie](https://github.com/apache/ossie) ontologies (`ontology/ontology.json`, version `0.2.0.dev0`). The [Ossie generator](/docs/generators/ossie/) does the reverse.
+The importer reads [Apache Ossie](https://github.com/apache/ossie) ontologies (`ontology/ontology.json`, version `0.3.0.dev0`). The [Ossie generator](/docs/generators/ossie/) does the reverse.
 
 ### Document
 
@@ -30,6 +30,12 @@ The importer reads [Apache Ossie](https://github.com/apache/ossie) ontologies (`
 | `prefixes`          | `prefixes`, declared after `linkml`.           |
 
 `version`, `requires` and `ontology_mappings` are not read. See [IRIs](#iris) for how `prefixes` and `iri` are handled.
+
+The result has the schema, and in `warnings`, one line for each kind of thing that could not be imported. On the command line, add `--list-not-imported` to list them on stderr:
+
+```
+Not imported: Expression that cannot be read (1): Flight: NOT (Flight.cancelled)
+```
 
 By default, the importer invents an identifier for the LinkML schema as `https://example.org/` + `name` in snake_case, unless the caller supplies `schema_id`.
 
@@ -86,7 +92,7 @@ The generator maps several LinkML types to one Ossie concept, so a round trip ch
 |----------------------------|--------------------------------------------|
 | `Concept.relationship`     | `required: true`                           |
 | `Ref IN ('a', 'b')`        | `permissible_values`                       |
-| `Ref == 'a' OR Ref == 'b'` | `permissible_values`, written back as `IN` |
+| `Ref == 'a' OR Ref = 'b'`  | `permissible_values`, written back as `IN` |
 | `Ref >= v`, `Ref <= v`     | `minimum_value`, `maximum_value`           |
 | `REGEXP_LIKE(Ref, 'p')`    | `pattern`                                  |
 

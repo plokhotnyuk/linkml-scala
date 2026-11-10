@@ -66,6 +66,8 @@ final case class FromOssieOptions(
     common: FromOptions,
     @Recurse
     importer: FromOssieCliOptions = FromOssieCliOptions(),
+    @HelpMessage("List what could not be imported, on stderr. Default: false")
+    listNotImported: Boolean = false,
 ) extends HasFromOptions
 
 object FromOssie extends From[FromOssieOptions] {
@@ -75,8 +77,14 @@ object FromOssie extends From[FromOssieOptions] {
       options: FromOssieOptions,
       in: InputStream,
       out: OutputStream,
-  ): Unit =
-    OssieImporter().writeTo(in, out, options.importer.toOptions)
+  ): Unit = {
+    val importer = OssieImporter()
+    val importerOptions = options.importer.toOptions
+    val result = importer.importWithWarnings(in, importerOptions)
+    if options.listNotImported then
+      result.warnings.foreach(w => printLine(s"Not imported: $w", toStderr = true))
+    importer.writeSchema(result.schema, out, importerOptions.format, importerOptions.fullUris)
+  }
 }
 
 // OWL

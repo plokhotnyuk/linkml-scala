@@ -54,7 +54,7 @@ classes:
         inlined_as_list: true
 `;
 
-export const EXAMPLE_OSSIE = `version: 0.2.0.dev0
+export const EXAMPLE_OSSIE = `version: 0.3.0.dev0
 name: library
 description: A tiny example schema, showing classes, slots, enums and a tree root.
 ontology:

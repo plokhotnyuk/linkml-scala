@@ -165,7 +165,7 @@ class FromOwlTest(unittest.TestCase):
 class FromOssieTest(unittest.TestCase):
     ONTOLOGY = textwrap.dedent(
         """
-        version: 0.2.0.dev0
+        version: 0.3.0.dev0
         name: flights
         ontology:
           - concept: Airport
@@ -186,6 +186,15 @@ class FromOssieTest(unittest.TestCase):
         self.assertIn("name: flights", schema)
         self.assertIn("Airport:", schema)
         self.assertIn("identifier: true", schema)
+
+    def test_lists_what_could_not_be_imported(self):
+        ontology = self.ONTOLOGY + "\n    requires: ['NOT (Airport.code)']"
+        result = ohi_linkml.from_ossie(ontology)
+        self.assertEqual(
+            ["Expression that cannot be read (1): Airport: NOT (Airport.code)"],
+            result["warnings"],
+        )
+        self.assertIn("Airport:", result["schema"])
 
     def test_writes_json_when_asked(self):
         schema = json.loads(ohi_linkml.from_ossie(self.ONTOLOGY, format="json")["schema"])
@@ -599,9 +608,9 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn("concept: Person", generated)
         self.assertIn("type: EntityType", generated)
         # YAML by default, and the version the Ossie ontology spec pins.
-        self.assertIn("version: 0.2.0.dev0", generated)
+        self.assertIn("version: 0.3.0.dev0", generated)
         as_json = json.loads(self.schema.ossie(format="json"))
-        self.assertEqual("0.2.0.dev0", as_json["version"])
+        self.assertEqual("0.3.0.dev0", as_json["version"])
         self.assertIn("Person", [c["concept"] for c in as_json["ontology"]])
 
     def test_ossie_unknown_output_format_is_rejected(self):

@@ -13,7 +13,7 @@ object OssieCases {
     * opposed to other cases which actually test `LinkML -> Ossie -> LinkML -> Ossie`.
     */
   val nonStandardLibrary: String =
-    """version: 0.2.0.dev0
+    """version: 0.3.0.dev0
       |name: Books
       |description: A tiny ontology of books and the people who wrote them.
       |prefixes:

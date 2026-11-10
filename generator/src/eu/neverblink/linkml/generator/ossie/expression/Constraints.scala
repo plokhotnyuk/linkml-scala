@@ -28,16 +28,25 @@ private[ossie] object Constraints {
 
   /** Gather constraints [[expressions]] place on [[ref]] into [[Constraints]].
     *
-    * This method will ignore any expressions that do not apply to [[ref]], and any expressions that
-    * cannot be expressed in LinkML.
+    * @return
+    *   the constraints, and the expressions that did not become one: those about another name,
+    *   those that LinkML cannot express, and a second bound or pattern
     */
-  def from(ref: Ref, expressions: Seq[Expression]): Constraints =
-    expressions.filter(_.ref == ref).foldLeft(Constraints()) { (acc, expression) =>
+  def from(ref: Ref, expressions: Seq[Expression]): (Constraints, Seq[Expression]) = {
+    val unused = Seq.newBuilder[Expression]
+    val constraints = expressions.foldLeft(Constraints()) { (acc, expression) =>
       expression match {
-        case AtLeast(_, v) => acc.copy(minimumValue = Some(v.toLinkml))
-        case AtMost(_, v) => acc.copy(maximumValue = Some(v.toLinkml))
-        case RegexpLike(_, p) => acc.copy(pattern = Some(p.value))
-        case _ => acc
+        case AtLeast(r, v) if r == ref && acc.minimumValue.isEmpty =>
+          acc.copy(minimumValue = Some(v.toLinkml))
+        case AtMost(r, v) if r == ref && acc.maximumValue.isEmpty =>
+          acc.copy(maximumValue = Some(v.toLinkml))
+        case RegexpLike(r, p) if r == ref && acc.pattern.isEmpty =>
+          acc.copy(pattern = Some(p.value))
+        case _ =>
+          unused += expression
+          acc
       }
     }
+    (constraints, unused.result())
+  }
 }

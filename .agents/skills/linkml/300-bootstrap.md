@@ -66,11 +66,11 @@ you were modelling.
 
 ```shell
 ohi linkml from owl --list-not-imported --to schema.yaml ontology.ttl
-ohi linkml from ossie --schema-id https://example.org/my-schema --to schema.yaml ontology.json
+ohi linkml from ossie --list-not-imported --schema-id https://example.org/my-schema --to schema.yaml ontology.json
 ```
 
-`from owl` reads Turtle or N-Triples only. `--list-not-imported` prints what was dropped, which
-goes in your report. For the other flags, including the `--config` that controls naming and maps
+`from owl` reads Turtle or N-Triples only. For both, `--list-not-imported` prints what was dropped,
+which goes in your report. For the other flags, including the `--config` that controls naming and maps
 `owl:imports` to existing LinkML schemas, run `--help`. The mappings are in
 the [OWL importer](https://linkml.ohi.dev/docs/importers/owl/) and the
 [Ossie importer](https://linkml.ohi.dev/docs/importers/ossie/).
