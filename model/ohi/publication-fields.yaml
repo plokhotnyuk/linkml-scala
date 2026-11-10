@@ -85,3 +85,5 @@ enums:
         description: LinkML in YAML syntax.
       ossie-yaml:
         description: Apache Ossie in YAML syntax.
+      shacl-turtle:
+        description: SHACL shapes in Turtle syntax.

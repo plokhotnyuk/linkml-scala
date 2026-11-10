@@ -31,6 +31,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
                 "ossie-yaml",
                 "rdfs-turtle",
                 "linkml-yaml",
+                "shacl-turtle",
               ),
               "licenses" -> ujson.Arr("MIT", "Apache-2.0"),
               "published_at" -> "2026-10-13T13:30:00+01:00",
@@ -76,6 +77,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         "ossie-yaml",
         "rdfs-turtle",
         "linkml-yaml",
+        "shacl-turtle",
       )
       hit.licenses shouldBe Seq("MIT", "Apache-2.0")
       hit.keywords shouldBe Seq("sensors", "observations")

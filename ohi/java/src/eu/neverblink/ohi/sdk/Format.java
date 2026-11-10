@@ -20,7 +20,10 @@ public enum Format {
     LINKML_YAML("linkml-yaml"),
 
     /** Apache Ossie in YAML syntax. */
-    OSSIE_YAML("ossie-yaml");
+    OSSIE_YAML("ossie-yaml"),
+
+    /** SHACL shapes in Turtle syntax. */
+    SHACL_TURTLE("shacl-turtle");
 
     private final String value;
 

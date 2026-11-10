@@ -28,6 +28,7 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
         )
         output should startWith("Error: Unsupported format 'turtle'.\n\nSupported formats\n")
         output should include("ohi get w3c/prov-o@2013 --format owl-turtle")
+        output should include("shacl-turtle  SHACL (Turtle)")
         output should include(s"--to '$root/a friend'\\''s files'")
         os.exists(destination) shouldBe false
         os.list(root) shouldBe empty

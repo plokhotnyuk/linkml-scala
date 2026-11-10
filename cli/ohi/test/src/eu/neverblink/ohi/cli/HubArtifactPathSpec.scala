@@ -17,6 +17,7 @@ class HubArtifactPathSpec extends AnyWordSpec, Matchers {
         Format.OwlRdfxml -> "w3c/dcat/3/dcat.owl",
         Format.RdfsTurtle -> "w3c/dcat/3/dcat.rdfs.ttl",
         Format.OssieYaml -> "w3c/dcat/3/dcat.ossie.yaml",
+        Format.ShaclTurtle -> "w3c/dcat/3/dcat.shacl.ttl",
       )
     do
       s"use the declared $format suffix and publication name instead of the advertised basename" in {

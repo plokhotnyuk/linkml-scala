@@ -15,7 +15,7 @@ Retrieval supplies a prepared published file. To convert local edits, use suppor
 `get` and `add` resolve `namespace/name[@version]` through ohi.dev with an optional `--format`.
 Use exact namespace, name and version values from search.
 Omitting the version selects the latest version. Supported formats are
-`owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml` and `ossie-yaml`.
+`owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml`, `ossie-yaml` and `shacl-turtle`.
 
 Without `--format`, ohi reads `default_format` from `ohi.yaml`, or uses `linkml-yaml` without a declaration.
 If the publication lacks the preferred format, it falls back to `linkml-yaml`.

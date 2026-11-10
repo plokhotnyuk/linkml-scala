@@ -118,6 +118,7 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         "owl-rdfxml" -> Format.OwlRdfxml,
         "rdfs-turtle" -> Format.RdfsTurtle,
         "ossie-yaml" -> Format.OssieYaml,
+        "shacl-turtle" -> Format.ShaclTurtle,
       )
     do
       s"preserve format $format" in {

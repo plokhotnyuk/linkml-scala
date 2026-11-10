@@ -14,6 +14,7 @@ private[cli] object CliFormatting {
     Format.RdfsTurtle -> "RDFS (Turtle)",
     Format.LinkmlYaml -> "LinkML (YAML)",
     Format.OssieYaml -> "Apache Ossie (YAML)",
+    Format.ShaclTurtle -> "SHACL (Turtle)",
   )
 
   def formatsHelp(colored: Boolean = false): String =

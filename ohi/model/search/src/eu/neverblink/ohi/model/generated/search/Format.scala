@@ -48,4 +48,11 @@ object Format {
     *   From schema: https://ohi.neverblink.eu/contracts/publication-fields
     */
   @named("ossie-yaml") case object OssieYaml extends Format
+
+  /** SHACL shapes in Turtle syntax.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/publication-fields
+    */
+  @named("shacl-turtle") case object ShaclTurtle extends Format
 }

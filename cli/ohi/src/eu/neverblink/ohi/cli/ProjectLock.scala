@@ -136,5 +136,6 @@ private[cli] object ProjectLock {
     case Format.RdfsTurtle => lock.Format.RdfsTurtle
     case Format.LinkmlYaml => lock.Format.LinkmlYaml
     case Format.OssieYaml => lock.Format.OssieYaml
+    case Format.ShaclTurtle => lock.Format.ShaclTurtle
   }
 }

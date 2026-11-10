@@ -67,7 +67,8 @@ class SearchCodecTests(unittest.TestCase):
         data["future"] = {"enabled": True}
         data["hits"][0]["text_match"] = 9
         data["hits"][0]["document"].update({
-            "formats": ["rdfs-turtle", "owl-rdfxml", "ossie-yaml", "owl-turtle", "linkml-yaml"],
+            "formats": ["rdfs-turtle", "owl-rdfxml", "ossie-yaml", "owl-turtle", "linkml-yaml",
+                        "shacl-turtle"],
             "licenses": ["MIT", "Apache-2.0"], "published_at": "2026-10-14T10:20:30.123456+02:30",
             "keywords": ["sensors", "observations"], "future": {"enabled": True},
         })
@@ -75,7 +76,8 @@ class SearchCodecTests(unittest.TestCase):
         self.assertEqual(result.hits[0].model_dump(mode="json"), {
             "base_url": "urn:a", "namespace": "example", "name": "sensors", "version": "1.2+fix",
             "title": "Sensors", "description": "Sensor observations",
-            "formats": ["rdfs-turtle", "owl-rdfxml", "ossie-yaml", "owl-turtle", "linkml-yaml"],
+            "formats": ["rdfs-turtle", "owl-rdfxml", "ossie-yaml", "owl-turtle", "linkml-yaml",
+                        "shacl-turtle"],
             "licenses": ["MIT", "Apache-2.0"], "published_at": "2026-10-14T10:20:30.123456+02:30",
             "keywords": ["sensors", "observations"],
         })

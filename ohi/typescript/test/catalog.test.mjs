@@ -76,7 +76,7 @@ test("search encodes original values once and preserves complete summaries in ba
     hits: ["https://example.org/z", "https://example.org/a", "https://example.org/z"].map((base_url, index) => ({
       base_url, namespace: "example", name: "sensors", version: "2026.1+amendment", title: "Sensors",
       description: "Sensor observations and devices.",
-      formats: ["ossie-yaml", "owl-rdfxml", "linkml-yaml", "owl-turtle", "rdfs-turtle"],
+      formats: ["ossie-yaml", "owl-rdfxml", "linkml-yaml", "owl-turtle", "rdfs-turtle", "shacl-turtle"],
       licenses: index === 1 ? [] : ["MIT", "Apache-2.0"], published_at: "2026-10-13T14:30:00+02:00",
       ...[{ keywords: ["sensors", "observations"] }, { keywords: [] }, {}][index],
     })),

@@ -81,6 +81,7 @@ private[cli] object HubArtifactPath {
     case Format.OwlRdfxml => "owl"
     case Format.RdfsTurtle => "rdfs.ttl"
     case Format.OssieYaml => "ossie.yaml"
+    case Format.ShaclTurtle => "shacl.ttl"
   }
 
   private def invalid(

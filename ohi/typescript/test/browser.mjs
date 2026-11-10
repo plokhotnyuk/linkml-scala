@@ -66,7 +66,7 @@ test("browser package integration", async (t) => {
     assert.deepEqual(result.result, { hits: [{ base_url: `${fixture.url}/metadata?signature=a%2Bb`,
       namespace: "example", name: "sensors", version: "2026.1+amendment", title: "Sensors",
       description: "Sensor observations and devices.",
-      formats: ["ossie-yaml", "owl-rdfxml", "linkml-yaml", "owl-turtle", "rdfs-turtle"],
+      formats: ["ossie-yaml", "owl-rdfxml", "linkml-yaml", "owl-turtle", "rdfs-turtle", "shacl-turtle"],
       licenses: ["MIT", "Apache-2.0"], published_at: "2026-10-13T14:30:00+02:00",
     }], page: 1, per_page: 10, total: 3, search_cutoff: false,
     facet_counts: [{ field_name: "licenses", counts: [{ value: "MIT", count: 2 }] }] });

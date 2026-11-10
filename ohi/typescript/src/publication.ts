@@ -3,6 +3,7 @@ import type { ArtifactOrigin, Format, Publication } from "./generated.js";
 // The compiler checks that these have every value of the generated enums.
 export const formats: Record<Format, true> = {
   "owl-turtle": true, "owl-rdfxml": true, "rdfs-turtle": true, "linkml-yaml": true, "ossie-yaml": true,
+  "shacl-turtle": true,
 };
 const origins: Record<ArtifactOrigin, true> = { UPSTREAM: true, GENERATED: true };
 

@@ -36,4 +36,5 @@ export type Format =
   | "owl-rdfxml"
   | "rdfs-turtle"
   | "linkml-yaml"
-  | "ossie-yaml";
+  | "ossie-yaml"
+  | "shacl-turtle";

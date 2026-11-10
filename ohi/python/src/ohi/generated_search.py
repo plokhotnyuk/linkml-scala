@@ -65,6 +65,8 @@ class Format(str, Enum):
     """LinkML in YAML syntax."""
     ossie_yaml = "ossie-yaml"
     """Apache Ossie in YAML syntax."""
+    shacl_turtle = "shacl-turtle"
+    """SHACL shapes in Turtle syntax."""
 
 
 class FacetCount(LinkMLModel):
