@@ -134,6 +134,15 @@
         <div id="inputEditor" class="editor"></div>
       </section>
 
+      <div class="splitter" id="splitter" role="separator" tabindex="0" aria-label="Resize the panels" aria-controls="outputPanel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <button type="button" class="splitter-btn" id="splitterToOutput" aria-label="Show only the output" title="Show only the output">
+          <svg class="ic" viewBox="0 0 10 10" aria-hidden="true"><path d="M7 1.5v7L2 5z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="splitter-btn" id="splitterToInput" aria-label="Show only the input" title="Show only the input">
+          <svg class="ic" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5v7L8 5z" fill="currentColor"/></svg>
+        </button>
+      </div>
+
       <section class="panel panel-output" id="outputPanel">
         <div class="panel-head">
           <span class="panel-title">Output <span class="panel-title-sub" id="outputSub"></span></span>
