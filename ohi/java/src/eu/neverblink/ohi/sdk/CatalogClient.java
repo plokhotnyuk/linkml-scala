@@ -208,12 +208,26 @@ public final class CatalogClient {
                 throw new IllegalArgumentException("expected a search hit document");
             }
             // Only the summary fields, as the other SDKs do
-            ObjectNode summary = hits.addObject();
+            ObjectNode summary = Json.MAPPER.createObjectNode();
             for (String field : HIT_FIELDS) {
                 if (document.has(field)) {
                     summary.set(field, document.get(field));
                 }
             }
+            // Formats added after this SDK version are discarded, with hits that have no others.
+            if (summary.path("formats").isArray()) {
+                ArrayNode formats = (ArrayNode) summary.get("formats");
+                ArrayNode known = summary.putArray("formats");
+                formats.forEach(format -> {
+                    if (!Publications.isNew(format, Publications.FORMATS)) {
+                        known.add(format);
+                    }
+                });
+                if (!formats.isEmpty() && known.isEmpty()) {
+                    continue;
+                }
+            }
+            hits.add(summary);
         }
         copy(raw, "found", result, "total");
         copy(raw, "page", result, "page");
@@ -241,7 +255,7 @@ public final class CatalogClient {
             }
         }
         SearchResult decoded = Json.MAPPER.treeToValue(result, SearchResult.class);
-        if (decoded.getPage() != page || decoded.getPerPage() != perPage || decoded.getHits().size() > perPage) {
+        if (decoded.getPage() != page || decoded.getPerPage() != perPage || raw.get("hits").size() > perPage) {
             throw new IllegalArgumentException("the response does not match the requested page and page size");
         }
         return decoded;

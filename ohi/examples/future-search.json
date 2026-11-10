@@ -1,0 +1,99 @@
+{
+  "facet_counts": [
+    {
+      "field_name": "formats",
+      "counts": [
+        {
+          "value": "owl-jsonld",
+          "count": 2,
+          "highlighted": "owl-jsonld"
+        },
+        {
+          "value": "owl-turtle",
+          "count": 1
+        }
+      ],
+      "sampled": false,
+      "stats": {
+        "total_values": 2
+      }
+    }
+  ],
+  "found": 3,
+  "out_of": 120,
+  "page": 1,
+  "request_params": {
+    "collection_name": "packages",
+    "first_q": "*",
+    "per_page": 10,
+    "q": "*"
+  },
+  "search_cutoff": false,
+  "search_time_ms": 1,
+  "hits": [
+    {
+      "document": {
+        "base_url": "https://example.org/packages/sensors/1.0.0/",
+        "namespace": "example",
+        "name": "sensors",
+        "version": "1.0.0",
+        "title": "Sensors",
+        "description": "Sensors and their observations.",
+        "formats": [
+          "owl-jsonld",
+          "owl-turtle",
+          "linkml-yaml"
+        ],
+        "licenses": [
+          "Apache-2.0"
+        ],
+        "keywords": [
+          "sensors"
+        ],
+        "published_at": "2026-10-13T12:30:00Z",
+        "publisher": "Example Project",
+        "download_count": 7,
+        "maintainers": [
+          {
+            "name": "Example Project"
+          }
+        ]
+      },
+      "highlights": [],
+      "text_match": 100,
+      "text_match_info": {
+        "best_field_score": "0"
+      }
+    },
+    {
+      "document": {
+        "base_url": "https://example.org/packages/devices/3.0.0/",
+        "namespace": "example",
+        "name": "devices",
+        "version": "3.0.0",
+        "title": "Devices",
+        "description": "Devices published only in a format added later.",
+        "formats": [
+          "owl-jsonld"
+        ],
+        "licenses": [],
+        "published_at": "2026-10-14T12:30:00Z"
+      }
+    },
+    {
+      "document": {
+        "base_url": "https://example.org/packages/units/2.0.0/",
+        "namespace": "example",
+        "name": "units",
+        "version": "2.0.0",
+        "title": "Units",
+        "description": "Units of measurement.",
+        "formats": [
+          "owl-turtle"
+        ],
+        "licenses": [],
+        "published_at": "2026-10-12T12:30:00Z"
+      }
+    }
+  ]
+}

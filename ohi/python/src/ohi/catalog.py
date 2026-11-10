@@ -10,12 +10,13 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from .generated import Publication
 from .generated_config import CatalogConfig
 from .generated_error import CatalogError
-from .generated_search import SearchHit, SearchResult
+from .generated_search import Format, SearchHit, SearchResult
 from .generated_search_request import SearchRequest
-from .publication import decode_publication
+from .publication import _is_new, decode_publication
 
 _SEARCH_PATH = "/search/collections/packages/documents/search"
 _REFERENCE = re.compile(r"([^/@\s`]+)/([^/@\s`]+)(?:@([^/@\s+`]+))?")
+_FORMATS = {value.value for value in Format}
 
 
 class CatalogException(Exception):
@@ -57,8 +58,16 @@ def _decode_search(text, page, per_page):
         if not isinstance(data["hits"], list):
             raise ValueError("search response requires a hits array")
         hits = [hit["document"] for hit in data["hits"]]
+        known = []
+        for hit in hits:
+            # Formats added after this SDK version are discarded
+            if isinstance(hit, dict) and isinstance(formats := hit.get("formats"), list):
+                hit["formats"] = [value for value in formats if not _is_new(value, _FORMATS)]
+                if formats and not hit["formats"]:
+                    continue
+            known.append(hit)
         result = {
-            "hits": hits, "total": data["found"], "page": data["page"],
+            "hits": known, "total": data["found"], "page": data["page"],
             "per_page": data["request_params"]["per_page"],
             "search_cutoff": data["search_cutoff"],
         }

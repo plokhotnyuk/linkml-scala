@@ -85,8 +85,8 @@ class SearchCodecTests(unittest.TestCase):
 
     def test_rejects_invalid_summary_values(self):
         values = [(field, " \t") for field in ("namespace", "name", "version", "title", "description")]
-        values += [("title", 1), ("formats", []),
-                   ("formats", ["owl"]), ("formats", ["OWL-TURTLE"]), ("licenses", [" "]), ("keywords", [1]),
+        values += [("title", 1), ("formats", []), ("formats", [1]), ("formats", "owl-turtle"),
+                   ("licenses", [" "]), ("keywords", [1]),
                    ("published_at", "2026-02-30T10:20:30Z"), ("published_at", 1791973230)]
         for field, value in values:
             with self.subTest(field=field, value=value):
@@ -94,6 +94,17 @@ class SearchCodecTests(unittest.TestCase):
                 data["hits"][0]["document"][field] = value
                 with self.assertRaises(ValueError):
                     _decode_search(json.dumps(data), 1, 2)
+
+    def test_ignores_fields_and_formats_added_later(self):
+        result = _decode_search((EXAMPLES / "future-search.json").read_text(encoding="utf-8"), 1, 10)
+        self.assertEqual([(hit.name, [f.value for f in hit.formats]) for hit in result.hits],
+                         [("sensors", ["owl-turtle", "linkml-yaml"]), ("units", ["owl-turtle"])])
+        self.assertEqual((result.total, result.page, result.per_page), (3, 1, 10))
+        self.assertEqual(result.model_dump()["facet_counts"], [{"field_name": "formats", "counts": [
+            {"value": "owl-jsonld", "count": 2}, {"value": "owl-turtle", "count": 1},
+        ]}])
+        self.assertFalse(result.model_extra)
+        self.assertFalse(result.hits[0].model_extra)
 
     def test_preserves_absent_and_empty_facets(self):
         for fields in ({}, {"facet_counts": []},

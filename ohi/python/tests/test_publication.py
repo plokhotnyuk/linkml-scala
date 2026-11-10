@@ -172,13 +172,21 @@ class PublicationTests(unittest.TestCase):
                 self.data["schema_version"] = value
                 self.reject()
 
-    def test_rejects_unknown_format(self):
-        self.data["artifacts"][0]["format"] = "future-format"
-        self.reject()
+    def test_ignores_fields_and_artifacts_added_later(self):
+        self.assertEqual(decode(example("future")), decode(example("sensors")))
 
-    def test_rejects_unknown_origin(self):
-        self.data["artifacts"][0]["origin"] = "FUTURE"
-        self.reject()
+    def test_rejects_publication_with_only_new_formats_and_origins(self):
+        self.data["artifacts"][0]["format"] = "owl-jsonld"
+        self.data["artifacts"][1]["origin"] = "MIRRORED"
+        with self.assertRaisesRegex(ValueError, "no artifacts that this SDK version supports"):
+            decode(self.data)
+
+    def test_rejects_non_text_format_and_origin(self):
+        for field in ("format", "origin"):
+            with self.subTest(field=field):
+                self.data = example()
+                self.data["artifacts"][0][field] = 1
+                self.reject()
 
     def test_discards_extras_at_each_record_level(self):
         self.data["package"] = "obsolete"

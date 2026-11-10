@@ -158,8 +158,22 @@ class PublicationJsonSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "reject an unknown format" in {
-      reject(value => value("artifacts")(0)("format") = "future-format")
+    "ignore fields and artifacts added later" in {
+      decode(example("future")) shouldBe decode(example())
+    }
+
+    "reject a publication with only new formats and origins" in {
+      val value = example()
+      value("artifacts")(0)("format") = "owl-jsonld"
+      value("artifacts")(1)("origin") = "MIRRORED"
+      the[IllegalArgumentException] thrownBy decode(value) should have message
+        "requirement failed: publication has no artifacts that this SDK version supports"
+    }
+
+    for (field <- Seq("format", "origin")) {
+      s"reject a non-text $field" in {
+        reject(value => value("artifacts")(0)(field) = 1)
+      }
     }
 
     for (
@@ -174,10 +188,6 @@ class PublicationJsonSpec extends AnyWordSpec, Matchers {
         value("artifacts")(0)("format") = label
         decode(value).artifacts.head.format shouldBe expected
       }
-    }
-
-    "reject an unknown origin" in {
-      reject(value => value("artifacts")(0)("origin") = "FUTURE")
     }
 
     "discard extras at each record level" in {

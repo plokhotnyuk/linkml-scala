@@ -6,7 +6,7 @@ import eu.neverblink.ohi.model.{ModelJson, PublicationJson}
 import eu.neverblink.ohi.model.generated.Publication
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.*
-import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
+import eu.neverblink.ohi.model.generated.search.{Format, SearchHit, SearchResult}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import java.io.{EOFException, IOException, InputStream}
 import java.net.{HttpURLConnection, SocketTimeoutException, URI, URISyntaxException, URLEncoder}
@@ -268,17 +268,39 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
 
 private[catalog] object CatalogClient {
   private val searchCodec: LinkmlYamlCodec[TypesenseResponse] = LinkmlYamlCodec.derived
+  private val formatCodec: LinkmlYamlCodec[Format] = LinkmlYamlCodec.derived
   private val SearchPath = "/search/collections/packages/documents/search"
 
   def decodeSearch(text: String, page: Int, perPage: Int): SearchResult = {
-    val response = ModelJson.decode(searchCodec, text)
+    val raw = ModelJson.parse(text)
+    val count = ModelJson.get(raw, "hits").collect { case hits: Node.SequenceNode =>
+      hits.nodes.size
+    }
+    val node = ModelJson.updated(raw, "hits") {
+      case hits: Node.SequenceNode => Node.SequenceNode(hits.nodes.flatMap(withKnownFormats)*)
+      case other => other
+    }
+    val response = ModelJson.decode(searchCodec, node)
     require(response.groupedHits.isEmpty, "grouped search responses are unsupported")
     val result = response.result
     require(result.page == page, "response page differs from requested page")
     require(result.perPage == perPage, "response per_page differs from requested per_page")
-    require(result.hits.size <= perPage, "response contains more hits than requested")
+    require(count.forall(_ <= perPage), "response contains more hits than requested")
     result
   }
+
+  /** The hit without formats added after this build */
+  private def withKnownFormats(hit: Node): Option[Node] =
+    ModelJson.get(hit, "document").flatMap(ModelJson.get(_, "formats")) match {
+      case Some(formats: Node.SequenceNode) =>
+        val known = formats.nodes.filterNot(ModelJson.isNew(formatCodec, _))
+        Option.when(formats.nodes.isEmpty || known.nonEmpty)(
+          ModelJson.updated(hit, "document")(
+            ModelJson.updated(_, "formats")(_ => Node.SequenceNode(known*)),
+          ),
+        )
+      case _ => Some(hit)
+    }
 
   /** The JSON object in an HTTP error body, if it has one. */
   def responseObject(text: String): Option[LinkmlAny] =

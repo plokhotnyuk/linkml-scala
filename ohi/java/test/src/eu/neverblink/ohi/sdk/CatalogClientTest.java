@@ -328,6 +328,21 @@ class CatalogClientTest {
     }
 
     @Test
+    void ignoresFieldsAndFormatsAddedLater() throws IOException {
+        route(LATEST_PATH, Files.readAllBytes(PublicationsTest.EXAMPLES.resolve("future-search.json")));
+        SearchResult result = searchClient().search(query("*"));
+        assertEquals(List.of("sensors", "units"),
+                result.getHits().stream().map(SearchHit::getName).collect(Collectors.toList()));
+        assertEquals(List.of(Format.OWL_TURTLE, Format.LINKML_YAML), result.getHits().get(0).getFormats());
+        assertEquals(List.of(Format.OWL_TURTLE), result.getHits().get(1).getFormats());
+        assertEquals(3, result.getTotal());
+        assertEquals(List.of("owl-jsonld", "owl-turtle"), result.getFacetCounts().get(0).getCounts().stream()
+                .map(FacetValueCount::getValue).collect(Collectors.toList()));
+        assertTrue(result.getExtraProperties().isEmpty());
+        assertTrue(result.getHits().get(0).getExtraProperties().isEmpty());
+    }
+
+    @Test
     void keepsAbsentAndEmptyFacets() {
         route(LATEST_PATH, bytes(searchBody(List.of(), 1, 10, 0)));
         assertNull(searchClient().search(query("*")).getFacetCounts());
@@ -358,7 +373,7 @@ class CatalogClientTest {
         notDocument.withArray("hits").addObject().putArray("document");
         bodies.add(notDocument);
         ObjectNode badFormat = searchBody(List.of("urn:a"), 1, 10, 3);
-        ((ObjectNode) badFormat.get("hits").get(0).get("document")).putArray("formats").add("owl");
+        ((ObjectNode) badFormat.get("hits").get(0).get("document")).putArray("formats").add(1);
         bodies.add(badFormat);
         ObjectNode badDate = searchBody(List.of("urn:a"), 1, 10, 3);
         ((ObjectNode) badDate.get("hits").get(0).get("document")).put("published_at", "2026-02-30T10:20:30Z");

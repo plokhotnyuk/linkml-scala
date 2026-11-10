@@ -1,12 +1,30 @@
-import type { Publication } from "./generated.js";
+import type { ArtifactOrigin, Format, Publication } from "./generated.js";
 
-/** Decode publication metadata, discarding extras. Field values are not validated. */
+// The compiler checks that these have every value of the generated enums.
+export const formats: Record<Format, true> = {
+  "owl-turtle": true, "owl-rdfxml": true, "rdfs-turtle": true, "linkml-yaml": true, "ossie-yaml": true,
+};
+const origins: Record<ArtifactOrigin, true> = { UPSTREAM: true, GENERATED: true };
+
+/** Whether a value is text outside an enum, so added to it after this SDK version. */
+export function isNew(value: unknown, known: object): boolean {
+  return typeof value === "string" && !Object.hasOwn(known, value);
+}
+
+/**
+ * Decode publication metadata, discarding extras and artifacts with a format or origin added
+ * after this SDK version. Field values are not validated.
+ */
 export function decodePublication(text: string): Publication {
   const data: Publication = JSON.parse(text);
   if (data.preferred_prefix !== undefined && data.namespace_iri === undefined) {
     throw new Error("preferred_prefix requires namespace_iri");
   }
-  const artifactUrls = data.artifacts.map(({ url }) => url);
+  const artifacts = data.artifacts.filter(({ format, origin }) => !isNew(format, formats) && !isNew(origin, origins));
+  if (data.artifacts.length > 0 && artifacts.length === 0) {
+    throw new Error("publication has no artifacts that this SDK version supports");
+  }
+  const artifactUrls = artifacts.map(({ url }) => url);
   if (new Set(artifactUrls).size !== artifactUrls.length) {
     throw new Error("artifacts must have unique URLs");
   }
@@ -32,7 +50,7 @@ export function decodePublication(text: string): Publication {
     ...(data.preferred_prefix === undefined ? {} : { preferred_prefix: data.preferred_prefix }),
     description: data.description,
     keywords: data.keywords,
-    artifacts: data.artifacts.map(({ format, url, origin, roots, size_bytes, sha256 }) =>
+    artifacts: artifacts.map(({ format, url, origin, roots, size_bytes, sha256 }) =>
       ({ format, url, origin, roots, size_bytes, sha256 })),
     dependencies: data.dependencies.map(({ base_url }) => ({ base_url })),
   };

@@ -44,6 +44,16 @@ test("maps publication fields", () => {
   assert.deepEqual(publication.dependencies, [{ base_url: "https://example.org/packages/units/2.0.0/" }]);
 });
 
+test("ignores fields and artifacts added later", () => {
+  assert.deepEqual(decode(example("future")), decode(example()));
+});
+
+test("rejects a publication with only new formats and origins", () => {
+  data.artifacts[0].format = "owl-jsonld";
+  data.artifacts[1].origin = "MIRRORED";
+  assert.throws(() => decode(data), /no artifacts that this SDK version supports/);
+});
+
 test("accepts no dependencies", () => {
   const publication = decode(example("units"));
   assert.equal(publication.base_url, "https://example.org/packages/units/2.0.0/");

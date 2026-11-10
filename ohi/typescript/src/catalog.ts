@@ -3,7 +3,7 @@ import type { CatalogConfig } from "./generated_config.js";
 import type { CatalogError, CatalogOperation } from "./generated_error.js";
 import type { SearchRequest } from "./generated_search_request.js";
 import type { FacetCount, SearchHit, SearchResult } from "./generated_search.js";
-import { decodePublication } from "./publication.js";
+import { decodePublication, formats as knownFormats, isNew } from "./publication.js";
 
 const searchPath = "/search/collections/packages/documents/search";
 const referencePattern = /^([^/@\p{White_Space}`]+)\/([^/@\p{White_Space}`]+)(?:@([^/@\p{White_Space}+`]+))?$/u;
@@ -57,9 +57,13 @@ function searchResult(bytes: Uint8Array, page: number, perPage: number): SearchR
   }
   return {
     ...result,
-    hits: result.hits.map(({ base_url, namespace, name, version, title, description, formats, licenses, published_at, keywords }) =>
-      ({ base_url, namespace, name, version, title, description, formats, licenses, published_at,
-        ...(keywords === undefined ? {} : { keywords }) })),
+    // Formats added after this SDK version are discarded
+    hits: result.hits.flatMap(({ base_url, namespace, name, version, title, description, formats, licenses, published_at, keywords }) => {
+      const known = Array.isArray(formats) ? formats.filter((format) => !isNew(format, knownFormats)) : formats;
+      if (Array.isArray(formats) && formats.length > 0 && known.length === 0) return [];
+      return [{ base_url, namespace, name, version, title, description, formats: known, licenses, published_at,
+        ...(keywords === undefined ? {} : { keywords }) }];
+    }),
     ...(result.facet_counts === undefined ? {} : {
       facet_counts: result.facet_counts.map(({ field_name, counts }) =>
         ({ field_name, counts: counts.map(({ value, count }) => ({ value, count })) })),

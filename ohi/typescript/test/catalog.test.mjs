@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createServer } from "node:http";
 import { once } from "node:events";
@@ -133,6 +134,20 @@ test("search preserves ordered facet values and safe counts while discarding nes
     { field_name: "licenses", counts: [{ value: "MIT", count: 0 }, { value: "Apache-2.0", count: 9007199254740991 }] },
     { field_name: "formats", counts: [] },
   ]);
+});
+
+test("search ignores fields and formats added later", async (t) => {
+  const wire = readFileSync(new URL("../../examples/future-search.json", import.meta.url));
+  const fixture = await server(t, (_, res) => res.end(wire));
+  const result = await catalog(fixture).search({ q: "*" });
+  assert.deepEqual(result.hits.map(({ name, formats }) => [name, formats]),
+    [["sensors", ["owl-turtle", "linkml-yaml"]], ["units", ["owl-turtle"]]]);
+  assert.equal(result.total, 3);
+  assert.deepEqual(result.facet_counts, [
+    { field_name: "formats", counts: [{ value: "owl-jsonld", count: 2 }, { value: "owl-turtle", count: 1 }] },
+  ]);
+  assert.deepEqual(Object.keys(result.hits[0]), ["base_url", "namespace", "name", "version", "title", "description",
+    "formats", "licenses", "published_at", "keywords"]);
 });
 
 test("search preserves an explicitly empty facet list", async (t) => {

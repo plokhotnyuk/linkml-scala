@@ -10,7 +10,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 import java.net.{InetSocketAddress, URI, URLDecoder}
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters.*
 
@@ -1109,6 +1109,74 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       }
     }
 
+  }
+
+  "forward compatibility" should {
+    def example(name: String): String =
+      Files.readString(Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", name))
+
+    "search without the fields, formats and hits added later" in {
+      withServer(example("future-search.json")) { (url, _) =>
+        val args = Seq("search", "*", "--search-url", url + searchPath, "--query-by", "title")
+        val out = successful(Search, (args :+ "--color=never")*)
+        out should include("Formats: owl-turtle, linkml-yaml")
+        out should not include "Devices"
+        out should include("owl-jsonld: 2")
+        val result = json(successful(Search, (args :+ "--json")*))
+        result("hits").arr.map(hit =>
+          hit("name").str -> hit("formats").arr.map(_.str),
+        ) shouldBe Seq(
+          "sensors" -> Seq("owl-turtle", "linkml-yaml"),
+          "units" -> Seq("owl-turtle"),
+        )
+        keys(result("hits")(0)) should not contain "download_count"
+      }
+    }
+
+    "inspect without the fields and artifacts added later" in {
+      withServer(example("sensors-package.json")) { (url, _) =>
+        val expected = successful(Inspect, "inspect", url, "--json")
+        withServer(example("future-package.json")) { (url, _) =>
+          successful(Inspect, "inspect", url, "--json") shouldBe expected
+          val out = successful(Inspect, "inspect", url)
+          out should not include "owl-jsonld"
+          out should not include "mirror.example.org"
+        }
+      }
+    }
+
+    "get a file from a publication with formats added later" in {
+      withDirectory { cwd =>
+        withServerResponses { base =>
+          val metadata = json(acquisitionPublication(base, "owl-turtle"))
+          val future = ujson.copy(metadata("artifacts")(0))
+          future("format") = "owl-jsonld"
+          future("url") = base + hub + "future"
+          metadata("artifacts").arr.prepend(future)
+          request =>
+            new URI(request).getPath match {
+              case `hub` => 200 -> metadata.toString.getBytes(UTF_8)
+              case path if path == hub + "original" => 200 -> binary
+              case _ => 404 -> Array.emptyByteArray
+            }
+        } { (base, requests) =>
+          val (out, err, code) = runReference(
+            cwd,
+            base,
+            "ConfiguredGet",
+            "example/z@2.0",
+            "--format",
+            "owl-turtle",
+            "--json",
+          )
+          withClue(err) { code shouldBe 0 }
+          json(out) shouldBe json(
+            s"""{"url":"$base${hub}original","path":"$cwd/.ohi/example/z/2.0/z.owl.ttl"}""",
+          )
+          requests.asScala.toSeq shouldBe Seq(hub, hub + "original")
+        }
+      }
+    }
   }
 
   "catalog command errors" should {

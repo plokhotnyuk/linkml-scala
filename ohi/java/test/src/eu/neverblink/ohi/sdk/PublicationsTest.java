@@ -133,11 +133,22 @@ class PublicationsTest {
     }
 
     @Test
-    void rejectsUnknownFormatAndOrigin() {
-        artifact(0).put("format", "future-format");
-        reject();
-        data = example("sensors");
-        artifact(0).put("origin", "FUTURE");
+    void ignoresFieldsAndArtifactsAddedLater() {
+        assertEquals(decode(example("sensors")), decode(example("future")));
+    }
+
+    @Test
+    void rejectsAPublicationWithOnlyNewFormatsAndOrigins() {
+        artifact(0).put("format", "owl-jsonld");
+        artifact(1).put("origin", "MIRRORED");
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> decode(data));
+        assertEquals("publication has no artifacts that this SDK version supports", e.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"format", "origin"})
+    void rejectsANonTextFormatOrOrigin(String field) {
+        artifact(0).put(field, 1);
         reject();
     }
 

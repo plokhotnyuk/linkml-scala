@@ -3,6 +3,7 @@ package eu.neverblink.ohi.catalog
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.linkml.yaml.{LinkmlYamlCodec, NodeJson}
 import eu.neverblink.ohi.model.generated.error.*
+import java.nio.file.{Files, Path}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -81,6 +82,22 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
       hit.publishedAt.value shouldBe "2026-10-13T13:30:00+01:00"
     }
 
+    "ignore fields and formats added later" in {
+      val text = Files.readString(
+        Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", "future-search.json"),
+      )
+      val result = CatalogClient.decodeSearch(text, 1, 10)
+      result.hits.map(hit => hit.name -> hit.formats.map(stringify(_))) shouldBe Seq(
+        "sensors" -> Seq("owl-turtle", "linkml-yaml"),
+        "units" -> Seq("owl-turtle"),
+      )
+      result.total shouldBe 3
+      result.facetCounts.flatMap(_.counts).map(c => c.value -> c.count) shouldBe Seq(
+        "owl-jsonld" -> 2,
+        "owl-turtle" -> 1,
+      )
+    }
+
     "preserve facet field and value order with integral counts and empty groups" in {
       val raw = response(urls = Seq.empty)
       raw("facet_counts") = ujson.read("""[
@@ -120,7 +137,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         "missing cutoff" -> (v => { v.obj.remove("search_cutoff"); () }),
         "missing reference" -> (v => { v("hits")(0)("document").obj.remove("base_url"); () }),
         "missing summary title" -> (v => { v("hits")(0)("document").obj.remove("title"); () }),
-        "language-only format" -> (v => v("hits")(0)("document")("formats") = ujson.Arr("owl")),
+        "non-text format" -> (v => v("hits")(0)("document")("formats") = ujson.Arr(1)),
         "missing facet field" -> (v => v("facet_counts") = ujson.read("""[{"counts":[]}]""")),
         "missing facet counts" -> (v =>
           v("facet_counts") = ujson.read("""[{"field_name":"formats"}]""")
