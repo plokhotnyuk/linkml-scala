@@ -82,6 +82,7 @@ object `package` extends Module {
       ((icons :+ "fonts").map(f => f -> public / f) ++
         llms.map(f => f -> root / "website" / "dist" / f) :+
         ("robots.txt" -> root / "pages" / "robots.txt") :+
+        ("og.png" -> root / "pages" / "og.png") :+
         ("docs" -> root / "website" / "dist"))
   }
 
