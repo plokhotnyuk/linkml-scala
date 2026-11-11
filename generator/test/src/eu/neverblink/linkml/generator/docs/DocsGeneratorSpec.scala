@@ -326,7 +326,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       page should include(
         """| Value | Meaning | Description |
           || --- | --- | --- |
-          || `SOME_OPTION` | [`ex:some_option`](https://example.org/some_option) |  |
+          || `SOME_OPTION` | `ex:some_option` |  |
           || `SOME_OTHER_OPTION` |  |  |
           || `YET_ANOTHER_OPTION` |  |  |
           |""".stripMargin,
@@ -379,7 +379,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       pages("enums/species.md") should include(
         """## Values from
           |
-          |- **Source nodes:** [`NCBITaxon:9606`](http://purl.obolibrary.org/obo/NCBITaxon_9606)
+          |- **Source nodes:** `NCBITaxon:9606`
           |- **Direct only:** yes
           |- **Includes the source nodes:** yes
           |""".stripMargin,
@@ -490,6 +490,26 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           "(https://creativecommons.org/licenses/by/4.0/)\n",
       )
       index("CC-BY-4.0") should include("- **License:** CC-BY-4.0\n")
+    }
+
+    "show URIs and mappings without links, but link see_also" in {
+      val page = files(
+        schemaOf(
+          """prefixes:
+            |  schema: https://schema.org/
+            |classes:
+            |  Person:
+            |    class_uri: schema:Person
+            |    exact_mappings: [https://old-vocab.example/Person]
+            |    see_also: [https://example.org/person.html]
+            |""".stripMargin,
+        ),
+      )("classes/person.md")
+      page should include("- **URI:** `schema:Person` (`https://schema.org/Person`)\n")
+      page should include("- **Exact mappings:** `https://old-vocab.example/Person`\n")
+      page should include(
+        "- **See also:** [`https://example.org/person.html`](https://example.org/person.html)\n",
+      )
     }
 
     "show cardinalities" in {

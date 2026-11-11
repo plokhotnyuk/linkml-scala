@@ -10,10 +10,12 @@ const marked = new Marked({
       const html = Renderer.prototype.link.call(this, token);
       // Links within the page start with `#`, and links to other pages of the documentation are
       // relative paths of Markdown files. page-view.ts shows both in the page view. Every other link opens
-      // in a new tab, so the playground keeps the schema being edited.
+      // in a new tab, so the playground keeps the schema being edited. Such a link comes from the
+      // schema, and may lead to a domain that has changed hands, so search engines should not follow
+      // it, and styles.css marks it as external.
       return token.href.startsWith("#") || isPageLink(token.href)
         ? html
-        : html.replace("<a ", '<a target="_blank" rel="noopener" ');
+        : html.replace("<a ", '<a class="external" target="_blank" rel="nofollow ugc noopener noreferrer" ');
     },
     // The same HTML as marked's own table, except for the first cell of each row of the body.
     table(token) {

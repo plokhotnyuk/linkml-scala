@@ -1034,6 +1034,19 @@ body { background: var(--bg); }
 .md-page li + li { margin-top: 2px; }
 .md-page a { color: var(--blue); text-decoration: none; }
 .md-page a:hover { text-decoration: underline; }
+/* An arrow out of a box after a link that leaves the playground, as on Wikipedia. A mask, so that
+   the arrow has the colour of the link. */
+.md-page a.external::after {
+  content: "";
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.2em;
+  vertical-align: baseline;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1h5v5L9 4 5.5 7.5 4.5 6.5 8 3zM2 2h3v1H3v6h6V7h1v3H2z'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1h5v5L9 4 5.5 7.5 4.5 6.5 8 3zM2 2h3v1H3v6h6V7h1v3H2z'/%3E%3C/svg%3E") no-repeat center / contain;
+}
 .md-page code {
   padding: 0.15em 0.4em;
   border-radius: var(--radius-sm);

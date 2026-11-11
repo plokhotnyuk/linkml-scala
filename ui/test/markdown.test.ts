@@ -41,8 +41,10 @@ test("links within the page and to other pages stay in the page view, and others
   assert.equal(renderMarkdown("[b](../slots/b.md)"), '<p><a href="../slots/b.md">b</a></p>\n');
   assert.equal(
     renderMarkdown("[a](https://w3id.org/linkml) [b](https://example.org/spec.md)"),
-    '<p><a target="_blank" rel="noopener" href="https://w3id.org/linkml">a</a> ' +
-      '<a target="_blank" rel="noopener" href="https://example.org/spec.md">b</a></p>\n',
+    '<p><a class="external" target="_blank" rel="nofollow ugc noopener noreferrer" ' +
+      'href="https://w3id.org/linkml">a</a> ' +
+      '<a class="external" target="_blank" rel="nofollow ugc noopener noreferrer" ' +
+      'href="https://example.org/spec.md">b</a></p>\n',
   );
 });
 

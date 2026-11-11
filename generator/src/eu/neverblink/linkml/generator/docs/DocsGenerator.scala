@@ -794,14 +794,25 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       urisItem(md, "Related mappings", m.relatedMappings)
       urisItem(md, "Narrow mappings", m.narrowMappings)
       urisItem(md, "Broad mappings", m.broadMappings)
-      urisItem(md, "See also", m.seeAlso)
+      if (m.seeAlso.nonEmpty) {
+        md.startItem("See also")
+        joined(md, m.seeAlso)(u => linkedUri(md, u, summon[PrefixMap]))
+        md.endItem()
+      }
       if (el.definingSchema ne sv.root) codeItem(md, "Defined in", el.definingSchema.name)
     }
 
     /** The list item with the URI of [[el]]. */
     private def uriItem(md: Markdown, el: ElementView[?, ?]): Unit = {
       md.startItem("URI")
-      uri(md, el.uri, el.definingPrefixes)
+      val full = el.uri.original
+      val compacted = el.definingPrefixes.compactOrNull(full)
+      if (compacted ne null) {
+        md.code(compacted)
+        md.append(" (")
+        md.code(full)
+        md.append(')')
+      } else md.code(full)
       md.endItem()
     }
 
@@ -1057,12 +1068,19 @@ object DocsGenerator {
     }
   }
 
-  /** A URI or CURIE as code, shown as a CURIE when it has a known prefix, and linked to the full
-    * URI when that is a web address. Any other value is shown as it is, even a URI such as
-    * `ex:Person` that a schema with the prefix `ex` would read as a CURIE, as the documentation is
-    * not read back.
+  /** A URI or CURIE as code, shown as a CURIE when it has a known prefix.
+    *
+    * The URI is not linked, because it often doesn't resolve.
     */
   private def uri(md: Markdown, u: UriOrCurie, prefixes: PrefixMap): Unit = {
+    val compacted = prefixes.compactOrNull(u.original)
+    md.code(if (compacted ne null) compacted else u.original)
+  }
+
+  /** Like [[uri]], but linked to the full URI when that is a web address. Only for slots that point
+    * to a page, such as `see_also`.
+    */
+  private def linkedUri(md: Markdown, u: UriOrCurie, prefixes: PrefixMap): Unit = {
     val uri = u.original
     val compacted = prefixes.compactOrNull(uri)
     val curie = if (compacted ne null) compacted else uri
