@@ -91,7 +91,7 @@ Run `ohi linkml --help` for the full list of generators and importers, or read
 |---|---|---|
 | Python | [`neverblink-linkml`](https://linkml.ohi.dev/docs/python-bindings/) | [`ohi-sdk`](https://ohi.dev/docs/reference/sdks/) |
 | JavaScript / TypeScript | [`@neverblink/linkml`](generator/npm/README.md) | [`@neverblink/ohi`](https://ohi.dev/docs/reference/sdks/) |
-| JVM (Scala, Java, Kotlin) | [Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml), [Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html) | – |
+| JVM (Scala, Java, Kotlin) | [Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml), [Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html) | [`eu.neverblink.ohi:ohi-sdk`](https://ohi.dev/docs/reference/sdks/): [Maven Central](https://central.sonatype.com/artifact/eu.neverblink.ohi/ohi-sdk), [Javadoc](https://javadoc.io/doc/eu.neverblink.ohi/ohi-sdk/latest/index.html) |
 | C, C++, Rust | [Shared library](https://linkml.ohi.dev/docs/python-bindings/#how-it-works) from [Releases](https://github.com/NeverBlink-OSS/ohi/releases/latest) | – |
 
 ## Also available
