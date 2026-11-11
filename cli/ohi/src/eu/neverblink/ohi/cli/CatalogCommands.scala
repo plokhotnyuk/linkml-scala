@@ -4,10 +4,14 @@ import caseapp.*
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.{Uri, stringify}
 import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException, Reference}
-import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
-import eu.neverblink.ohi.model.generated.config.CatalogConfig
-import eu.neverblink.ohi.model.generated.error.{CatalogError, CatalogErrorCode, CatalogOperation}
-import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
+import eu.neverblink.ohi.model.generated.{
+  CatalogConfig,
+  CatalogError,
+  CatalogErrorCode,
+  CatalogOperation,
+  DeliveryResultImpl,
+  SearchRequest,
+}
 
 import java.nio.file.Path
 
@@ -304,7 +308,7 @@ private[cli] class GetCommand extends CatalogCommand[GetOptions] {
         val owner = HubArtifactPath.artifact(input, destination.directory)
         metadata.selected(
           Seq(
-            eu.neverblink.ohi.model.generated.lock.ArtifactSelectionImpl(
+            eu.neverblink.ohi.model.generated.ArtifactSelectionImpl(
               Uri(owner.baseUrl),
               Uri(input),
             ),
@@ -315,7 +319,7 @@ private[cli] class GetCommand extends CatalogCommand[GetOptions] {
           input,
           options.format,
           metadata,
-          declaration.map(value => ProjectFormat.toModel(value.defaultFormat)),
+          declaration.map(_.defaultFormat),
         )
       }
       val plan = LockDownload.prepare(
@@ -326,7 +330,7 @@ private[cli] class GetCommand extends CatalogCommand[GetOptions] {
       LockDownload.ensureIgnore(plan)
       val files = LockDownload.install(plan, client.get)
       if options.common.json then
-        CatalogOutput.delivery(DeliveryResult(files.head.path, files.head.url))
+        CatalogOutput.delivery(DeliveryResultImpl(files.head.path, files.head.url))
       else LockDownloadOutput.summary(files, colored, options.to)
     } catch {
       case failure: ProjectException => correction(failure.getMessage)

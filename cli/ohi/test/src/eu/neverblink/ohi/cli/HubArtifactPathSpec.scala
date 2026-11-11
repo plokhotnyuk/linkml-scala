@@ -1,7 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileErrorCode
-import eu.neverblink.ohi.model.generated.lock.Format
+import eu.neverblink.ohi.model.generated.{CliFileErrorCode, Format}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

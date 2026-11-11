@@ -1,8 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.{LinkmlDateTime, Uri}
-import eu.neverblink.ohi.model.generated.{ArtifactOrigin, Format}
-import eu.neverblink.ohi.model.generated.search.SearchHit
+import eu.neverblink.ohi.model.generated.{ArtifactOrigin, Format, SearchHit}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

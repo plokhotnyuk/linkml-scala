@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.{LinkmlAny, Uri}
-import eu.neverblink.ohi.cli.generated.projecterror.*
+import eu.neverblink.ohi.model.generated.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -9,23 +9,23 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
   "human project results" should {
     "separate project guidance from the install summary while retaining absolute JSON paths" in {
       val directory = os.pwd.toString
-      val result = generated.projectresult.ProjectResult(
-        operation = generated.projectresult.ProjectOperation.Add,
+      val result = ProjectResult(
+        operation = ProjectOperation.Add,
         projectDirectory = directory,
         declarationChanged = true,
         declarationCreated = true,
         lockChanged = true,
         files = Seq(
-          generated.projectresult.LockFileResult(
+          LockFileResult(
             path = (os.pwd / ".ohi" / "w3c" / "dcat" / "3" / "dcat.linkml.yaml").toString,
             url = Uri("https://example.org/dcat.yaml"),
-            status = generated.projectresult.LockFileStatus.Downloaded,
+            status = LockFileStatus.Downloaded,
           ),
         ),
       )
-      val added = generated.declaration.ProjectDependency(
+      val added = ProjectDependency(
         "w3c/dcat@3",
-        generated.declaration.Format.LinkmlYaml,
+        Format.LinkmlYaml,
       )
       ProjectOutput.result(result, json = false, added = Some(added)) shouldBe
         "Created an ohi project.\n" +
@@ -44,28 +44,28 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
     }
 
     "report an existing selection while retaining downloaded and verified repair counts" in {
-      val result = generated.projectresult.ProjectResult(
-        operation = generated.projectresult.ProjectOperation.Add,
+      val result = ProjectResult(
+        operation = ProjectOperation.Add,
         projectDirectory = os.pwd.toString,
         declarationChanged = false,
         declarationCreated = false,
         lockChanged = true,
         files = Seq(
-          generated.projectresult.LockFileResult(
+          LockFileResult(
             path = (os.pwd / ".ohi" / "test" / "example" / "1" / "example.owl.ttl").toString,
             url = Uri("https://example.org/example.ttl"),
-            status = generated.projectresult.LockFileStatus.Downloaded,
+            status = LockFileStatus.Downloaded,
           ),
-          generated.projectresult.LockFileResult(
+          LockFileResult(
             path = (os.pwd / ".ohi" / "test" / "dependency" / "1" / "dependency.owl.ttl").toString,
             url = Uri("https://example.org/dependency.ttl"),
-            status = generated.projectresult.LockFileStatus.Verified,
+            status = LockFileStatus.Verified,
           ),
         ),
       )
-      val added = generated.declaration.ProjectDependency(
+      val added = ProjectDependency(
         "test/example@1",
-        generated.declaration.Format.OwlTurtle,
+        Format.OwlTurtle,
       )
       ProjectOutput.result(result, json = false, added = Some(added)) shouldBe
         "Already exists: test/example@1 (owl-turtle)\n" +

@@ -1,12 +1,18 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.projecterror.{ProjectErrorCode, ProjectOperation}
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileErrorCode
+import eu.neverblink.ohi.model.generated.{
+  CliFileErrorCode,
+  Format,
+  LockError,
+  LockErrorCode,
+  LockOperation,
+  ProjectErrorCode,
+  ProjectOperation,
+  Publication,
+}
 import eu.neverblink.ohi.model.{LockException, LockFiles}
-import eu.neverblink.ohi.model.generated.{Format, Publication}
 import eu.neverblink.linkml.runtime.{PlainText, Uri}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
-import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockError, LockOperation}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -121,7 +127,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val failure = intercept[ProjectException](
           project.init(
             createParents = true,
-            defaultFormat = generated.declaration.Format.OwlTurtle,
+            defaultFormat = Format.OwlTurtle,
             downloadDir = "downloads",
           ),
         )

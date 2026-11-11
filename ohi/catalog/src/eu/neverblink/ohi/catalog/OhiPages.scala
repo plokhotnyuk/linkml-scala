@@ -1,7 +1,6 @@
 package eu.neverblink.ohi.catalog
 
-import eu.neverblink.ohi.model.generated.Publication
-import eu.neverblink.ohi.model.generated.search.SearchHit
+import eu.neverblink.ohi.model.generated.{Publication, SearchHit}
 import java.nio.charset.StandardCharsets
 
 /** Links to pages on ohi.dev. */

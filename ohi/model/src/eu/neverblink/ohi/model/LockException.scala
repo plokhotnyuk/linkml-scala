@@ -1,6 +1,6 @@
 package eu.neverblink.ohi.model
 
-import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
+import eu.neverblink.ohi.model.generated.{LockError, LockErrorCode, LockOperation}
 
 final class LockException(val error: LockError, cause: Option[Throwable] = None)
     extends RuntimeException(error.message, cause.orNull)

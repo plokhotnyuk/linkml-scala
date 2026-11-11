@@ -7,11 +7,15 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from .generated import Publication
-from .generated_config import CatalogConfig
-from .generated_error import CatalogError
-from .generated_search import Format, SearchHit, SearchResult
-from .generated_search_request import SearchRequest
+from .generated import (
+    CatalogConfig,
+    CatalogError,
+    Format,
+    Publication,
+    SearchHit,
+    SearchRequest,
+    SearchResult,
+)
 from .publication import _is_new, decode_publication
 
 _SEARCH_PATH = "/search/collections/packages/documents/search"

@@ -1,7 +1,6 @@
 package eu.neverblink.ohi.model
 
-import eu.neverblink.ohi.model.generated.lock.Lock
-import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockOperation}
+import eu.neverblink.ohi.model.generated.{Lock, LockErrorCode, LockOperation}
 import java.io.OutputStream
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets.UTF_8

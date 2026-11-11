@@ -2,9 +2,13 @@ package eu.neverblink.ohi.catalog
 
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
 import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.ohi.model.generated.config.CatalogConfig
-import eu.neverblink.ohi.model.generated.error.{CatalogError, CatalogErrorCode, CatalogOperation}
-import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
+import eu.neverblink.ohi.model.generated.{
+  CatalogConfig,
+  CatalogError,
+  CatalogErrorCode,
+  CatalogOperation,
+  SearchRequest,
+}
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.{InetSocketAddress, ServerSocket, URLDecoder}

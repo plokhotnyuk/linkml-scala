@@ -3,10 +3,8 @@ package eu.neverblink.ohi.cli
 import caseapp.*
 import caseapp.core.Error
 import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException}
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectOperation
-import eu.neverblink.ohi.cli.generated.projectresult.ProjectResult
+import eu.neverblink.ohi.model.generated.{CatalogConfig, ProjectOperation, ProjectResult}
 import eu.neverblink.ohi.model.LockException
-import eu.neverblink.ohi.model.generated.config.CatalogConfig
 
 import java.nio.file.{InvalidPathException, Path}
 
@@ -105,7 +103,7 @@ object Init extends ProjectCommand[InitOptions] {
       project: Project,
   ): ProjectResult = {
     val defaultFormat = OntologyReference.parseFormat(options.defaultFormat)
-      .fold(problem => error(Error.Other(problem.message)), ProjectFormat.toDeclaration)
+      .fold(problem => error(Error.Other(problem.message)), identity)
     project.init(
       createParents = inputs.nonEmpty,
       defaultFormat = defaultFormat,

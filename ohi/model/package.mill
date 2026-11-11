@@ -8,13 +8,7 @@ object `package` extends Module {
   object jvm extends CommonBuildModule {
     def moduleDeps = Seq(
       build.yaml.jvm,
-      build.ohi.model.publication.jvm,
-      build.ohi.model.searchrequest.jvm,
-      build.ohi.model.search.jvm,
-      build.ohi.model.config.jvm,
-      build.ohi.model.error.jvm,
-      build.ohi.model.lock.jvm,
-      build.ohi.model.lockerror.jvm,
+      build.ohi.model.generated.jvm,
     )
 
     object test extends ScalaTests, CommonTestModule {

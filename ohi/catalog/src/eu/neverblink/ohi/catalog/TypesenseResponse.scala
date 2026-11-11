@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.catalog
 
 import eu.neverblink.linkml.runtime.{LinkmlAny, extraSlotsAllowed, named}
-import eu.neverblink.ohi.model.generated.search.{FacetCount, SearchHit, SearchResult}
+import eu.neverblink.ohi.model.generated.{FacetCount, SearchHit, SearchResult}
 
 /** The parts of a Typesense search response that make up a [[SearchResult]]. */
 @extraSlotsAllowed

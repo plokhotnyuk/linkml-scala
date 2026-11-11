@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.stringify
-import eu.neverblink.ohi.model.generated.search.SearchResult
+import eu.neverblink.ohi.model.generated.SearchResult
 
 import scala.collection.mutable.ArrayBuffer
 

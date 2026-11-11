@@ -2,9 +2,12 @@ package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.ohi.catalog.CatalogException
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileErrorCode
-import eu.neverblink.ohi.cli.generated.projectresult.{LockFileResult, LockFileStatus}
-import eu.neverblink.ohi.model.generated.lock.LockedFile
+import eu.neverblink.ohi.model.generated.{
+  CliFileErrorCode,
+  LockFileResult,
+  LockFileStatus,
+  LockedFile,
+}
 
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets.UTF_8

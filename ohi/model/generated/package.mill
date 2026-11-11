@@ -1,0 +1,38 @@
+package build.ohi.model.generated
+
+import mill.*
+import millbuild.*
+
+/** The ohi models, generated into Scala by this project's own Scala generator. The Scala code has
+  * the models of the SDKs and of the ohi CLI in one package, so each type is generated once. The
+  * SDKs get only their own models, from one schema that imports all of them.
+  */
+object `package` extends Module, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
+  def modelSchema = Task { "model/ohi/all.yaml" }
+
+  def modelPackage = "eu.neverblink.ohi.model.generated"
+
+  override def otherModelOutputs = Seq(
+    ModelOutput(
+      "pydantic",
+      build.ohi.moduleDir / "python" / "src" / "ohi" / "generated.py",
+      Some("model/ohi/sdk.yaml"),
+    ),
+    ModelOutput(
+      "typescript",
+      build.ohi.moduleDir / "typescript" / "src" / "generated.ts",
+      Some("model/ohi/sdk.yaml"),
+    ),
+    ModelOutput(
+      "java --clean --package eu.neverblink.ohi.sdk",
+      build.ohi.moduleDir / "java" / "src" / "eu" / "neverblink" / "ohi" / "sdk",
+      Some("model/ohi/sdk.yaml"),
+    ),
+  )
+
+  object jvm extends CommonBuildModule {
+    def moduleDeps = Seq(build.runtime.jvm)
+  }
+}

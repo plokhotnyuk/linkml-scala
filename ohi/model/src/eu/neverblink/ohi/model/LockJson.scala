@@ -1,8 +1,7 @@
 package eu.neverblink.ohi.model
 
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import eu.neverblink.ohi.model.generated.lock.*
-import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockOperation}
+import eu.neverblink.ohi.model.generated.*
 import org.virtuslab.yaml.{Node, Tag}
 
 /** Reads and writes complete supplied file locks with the generated classes, preserving exact URL

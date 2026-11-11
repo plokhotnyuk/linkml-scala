@@ -5,9 +5,7 @@ import eu.neverblink.linkml.cli.TerminalOutput
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.ohi.catalog.CatalogException
-import eu.neverblink.ohi.cli.ErrorOutput.{as, given}
-import eu.neverblink.ohi.cli.generated.projecterror.*
-import eu.neverblink.ohi.cli.generated.projectresult.ProjectResult
+import eu.neverblink.ohi.model.generated.*
 import eu.neverblink.ohi.model.LockException
 
 import java.nio.file.Path
@@ -17,12 +15,6 @@ import CliFormatting.{displayPath, styled}
 private[cli] object ProjectOutput {
   private val resultCodec: LinkmlYamlCodec[ProjectResult] = LinkmlYamlCodec.derived
   private val errorCodec: LinkmlYamlCodec[ProjectError] = LinkmlYamlCodec.derived
-  private given catalogError: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
-  private given lockError: LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
-  private given downloadedFile: LinkmlYamlCodec[generated.projectresult.LockFileResult] =
-    LinkmlYamlCodec.derived
-  private given projectFile: LinkmlYamlCodec[LockFileResult] = LinkmlYamlCodec.derived
-  private given fileError: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
   def failure(
       operation: ProjectOperation,
@@ -30,7 +22,7 @@ private[cli] object ProjectOutput {
       declarationChanged: Boolean,
       declarationCreated: Boolean,
       lockChanged: Boolean,
-      files: Seq[generated.projectresult.LockFileResult],
+      files: Seq[LockFileResult],
       cause: Throwable,
       recovery: String,
   ): ProjectError = {
@@ -41,7 +33,7 @@ private[cli] object ProjectOutput {
       declarationChanged = declarationChanged,
       declarationCreated = declarationCreated,
       lockChanged = lockChanged,
-      files = files.map(_.as[LockFileResult]),
+      files = files,
       message = s"${cause.getMessage}\n$recovery",
     )
     cause match {
@@ -49,13 +41,13 @@ private[cli] object ProjectOutput {
       case failure: CatalogException =>
         base.copy(catalogError =
           Some(
-            failure.error.as[CatalogError],
+            failure.error,
           ),
         )
       case failure: LockException =>
-        base.copy(lockError = Some(failure.error.as[LockError]))
+        base.copy(lockError = Some(failure.error))
       case failure: CliFileException =>
-        base.copy(fileError = Some(failure.error.as[CliFileError]))
+        base.copy(fileError = Some(failure.error))
     }
   }
 
@@ -64,18 +56,18 @@ private[cli] object ProjectOutput {
       json: Boolean,
       colored: Boolean = false,
       downloadDirectory: Option[Path] = None,
-      added: Option[generated.declaration.ProjectDependency] = None,
+      added: Option[ProjectDependency] = None,
   ): String =
     if json then JsonUtil.yamlToJson(resultCodec.encode(result))
     else {
       val directory = Path.of(result.projectDirectory)
       val declaration = displayPath(directory.resolve("ohi.yaml"))
       result.operation match {
-        case generated.projectresult.ProjectOperation.Init =>
+        case ProjectOperation.Init =>
           if result.declarationCreated then
             creationNotice(directory, downloadDirectory, colored) + "\n\nNext: ohi add --help"
           else styled(declaration, "36", colored) + " already exists. No changes made."
-        case generated.projectresult.ProjectOperation.Lock =>
+        case ProjectOperation.Lock =>
           if result.lockChanged then "Updated ohi.lock.json." else "ohi.lock.json is up to date."
         case _ =>
           val location = downloadDirectory.filter(_ =>

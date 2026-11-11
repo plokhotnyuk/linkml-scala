@@ -1,8 +1,12 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.ohi.catalog.CatalogException
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileErrorCode
-import eu.neverblink.ohi.model.generated.error.{CatalogErrorCode, CatalogError, CatalogOperation}
+import eu.neverblink.ohi.model.generated.{
+  CatalogError,
+  CatalogErrorCode,
+  CatalogOperation,
+  CliFileErrorCode,
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

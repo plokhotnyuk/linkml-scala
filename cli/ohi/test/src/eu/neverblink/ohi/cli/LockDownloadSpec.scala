@@ -2,10 +2,15 @@ package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.ohi.catalog.CatalogException
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileErrorCode
-import eu.neverblink.ohi.cli.generated.projectresult.LockFileStatus
-import eu.neverblink.ohi.model.generated.error.{CatalogErrorCode, CatalogError, CatalogOperation}
-import eu.neverblink.ohi.model.generated.lock.{Format, LockedFile}
+import eu.neverblink.ohi.model.generated.{
+  CatalogError,
+  CatalogErrorCode,
+  CatalogOperation,
+  CliFileErrorCode,
+  Format,
+  LockFileStatus,
+  LockedFile,
+}
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

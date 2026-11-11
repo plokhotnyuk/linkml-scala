@@ -1,6 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.projectresult.{LockFileResult, LockFileStatus}
+import eu.neverblink.ohi.model.generated.{LockFileResult, LockFileStatus}
 import java.nio.file.Path
 
 private[cli] object LockDownloadOutput {

@@ -2,7 +2,7 @@ id: https://ohi.neverblink.eu/contracts/sdk
 name: ohi_sdk
 title: ohi SDK models
 description: >-
-  All the models of the ohi SDKs, for generators that write them into one package.
+  All the models of the ohi SDKs, which each SDK has in one package or file.
 prefixes:
   ohi: https://ohi.neverblink.eu/contracts/
   linkml: https://w3id.org/linkml/

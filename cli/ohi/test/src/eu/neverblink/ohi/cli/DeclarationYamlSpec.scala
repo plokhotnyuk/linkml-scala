@@ -1,8 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.generator.util.JsonUtil
-import eu.neverblink.ohi.cli.generated.declaration.{Declaration, Format, ProjectDependency}
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
+import eu.neverblink.ohi.model.generated.{Declaration, Format, ProjectDependency, ProjectErrorCode}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml

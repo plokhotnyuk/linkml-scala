@@ -4,7 +4,7 @@ import com.sun.net.httpserver.{HttpExchange, HttpServer}
 import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.runtime.Uri
 
-import eu.neverblink.ohi.model.generated.config.CatalogConfig
+import eu.neverblink.ohi.model.generated.CatalogConfig
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

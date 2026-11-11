@@ -2,23 +2,22 @@ package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.ohi.cli.ProjectTestData.publication
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
 import eu.neverblink.ohi.model.generated.*
-import eu.neverblink.ohi.model.generated.lock
+
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import scala.collection.mutable.ArrayBuffer
 
 class ProjectLockSpec extends AnyWordSpec, Matchers {
   private def build(
-      selections: Seq[lock.ArtifactSelectionImpl],
+      selections: Seq[ArtifactSelectionImpl],
       inspect: String => Publication,
-  ): lock.Lock = ProjectLock.build(selections, new ProjectLock.Inspection(inspect))
+  ): Lock = ProjectLock.build(selections, new ProjectLock.Inspection(inspect))
 
-  private def selection(baseUrl: String, url: String): lock.ArtifactSelectionImpl =
-    lock.ArtifactSelectionImpl(Uri(baseUrl), Uri(url))
+  private def selection(baseUrl: String, url: String): ArtifactSelectionImpl =
+    ArtifactSelectionImpl(Uri(baseUrl), Uri(url))
 
-  private def fileValues(result: lock.Lock): Seq[(String, String, lock.Format)] =
+  private def fileValues(result: Lock): Seq[(String, String, Format)] =
     result.files.map(file => (file.baseUrl.original, file.url.original, file.format))
 
   // Selects source.ttl from a publication with one dependency that offers `artifacts`.
@@ -52,7 +51,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
   }
 
   // Locks one selected artifact of `format` and returns its only locked file.
-  private def lockedFile(format: Format): (String, String, lock.Format) = {
+  private def lockedFile(format: Format): (String, String, Format) = {
     val result = build(
       Seq(
         selection(
@@ -175,27 +174,27 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         (
           "https://Hub.example/files/packages/test/z%2F/1/",
           "https://Hub.example/files/packages/test/z%2F/1/z%2F.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
         (
           "https://example.org/files/packages/test/a/1/",
           "https://example.org/files/packages/test/a/1/a.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
         (
           "https://example.org/files/packages/test/b/1/",
           "https://example.org/files/packages/test/b/1/b.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
         (
           "https://example.org/files/packages/test/c/1/",
           "https://example.org/files/packages/test/c/1/c.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
         (
           "https://Hub.example/files/packages/test/z%2F/1/",
           "https://Hub.example/files/packages/test/z%2F/1/z-second.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
       )
       result.files.map(_.sha256) shouldBe Seq(
@@ -250,22 +249,22 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         (
           "https://example.org/files/packages/test/source/1/",
           "https://example.org/files/packages/test/source/1/source.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
         (
           "https://example.org/files/packages/test/dependency/1/",
           "https://example.org/files/packages/test/dependency/1/dependency.ttl",
-          lock.Format.OwlTurtle,
+          Format.OwlTurtle,
         ),
         (
           "https://example.org/files/packages/test/source/1/",
           "https://example.org/files/packages/test/source/1/source.yaml",
-          lock.Format.LinkmlYaml,
+          Format.LinkmlYaml,
         ),
         (
           "https://example.org/files/packages/test/dependency/1/",
           "https://example.org/files/packages/test/dependency/1/dependency.yaml",
-          lock.Format.LinkmlYaml,
+          Format.LinkmlYaml,
         ),
       )
     }
@@ -382,7 +381,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         (
           "https://example.org/files/packages/test/source/1/",
           "https://example.org/files/packages/test/source/1/artifact",
-          lock.Format.OwlRdfxml,
+          Format.OwlRdfxml,
         )
     }
 
@@ -391,7 +390,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         (
           "https://example.org/files/packages/test/source/1/",
           "https://example.org/files/packages/test/source/1/artifact",
-          lock.Format.RdfsTurtle,
+          Format.RdfsTurtle,
         )
     }
 
@@ -400,7 +399,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         (
           "https://example.org/files/packages/test/source/1/",
           "https://example.org/files/packages/test/source/1/artifact",
-          lock.Format.OssieYaml,
+          Format.OssieYaml,
         )
     }
 
@@ -448,7 +447,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
       failure.code shouldBe ProjectErrorCode.InvalidSelection
       failure.getMessage should include("https://example.org/publication")
       val cause = failure.getCause.asInstanceOf[CliFileException]
-      cause.error.code shouldBe generated.fileerror.CliFileErrorCode.UnsupportedFilename
+      cause.error.code shouldBe CliFileErrorCode.UnsupportedFilename
       cause.getMessage shouldBe failure.getMessage
     }
 

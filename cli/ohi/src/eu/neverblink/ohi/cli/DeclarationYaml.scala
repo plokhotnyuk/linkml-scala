@@ -1,8 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import eu.neverblink.ohi.cli.generated.declaration.Declaration
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
+import eu.neverblink.ohi.model.generated.{Declaration, ProjectErrorCode}
 import org.virtuslab.yaml.{Node, NodeOps, Tag, parseYaml}
 import scala.util.control.NonFatal
 

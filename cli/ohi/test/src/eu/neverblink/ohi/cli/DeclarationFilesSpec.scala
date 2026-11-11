@@ -1,7 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.declaration.{Declaration, Format}
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
+import eu.neverblink.ohi.model.generated.{Declaration, Format, ProjectErrorCode}
 import java.io.{FilterOutputStream, IOException, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{AtomicMoveNotSupportedException, Files, Path}

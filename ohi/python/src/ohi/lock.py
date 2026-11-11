@@ -5,8 +5,7 @@ import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from .generated_lock import Lock
-from .generated_lock_error import LockError
+from .generated import Lock, LockError
 
 
 class LockException(Exception):

@@ -3,11 +3,7 @@ package eu.neverblink.ohi.catalog
 import eu.neverblink.linkml.runtime.{LinkmlAny, Uri}
 import eu.neverblink.linkml.yaml.{LinkmlYamlCodec, NodeJson}
 import eu.neverblink.ohi.model.{ModelJson, PublicationJson}
-import eu.neverblink.ohi.model.generated.Publication
-import eu.neverblink.ohi.model.generated.config.CatalogConfig
-import eu.neverblink.ohi.model.generated.error.*
-import eu.neverblink.ohi.model.generated.search.{Format, SearchHit, SearchResult}
-import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
+import eu.neverblink.ohi.model.generated.*
 import java.io.{EOFException, IOException, InputStream}
 import java.net.{HttpURLConnection, SocketTimeoutException, URI, URISyntaxException, URLEncoder}
 import java.nio.ByteBuffer

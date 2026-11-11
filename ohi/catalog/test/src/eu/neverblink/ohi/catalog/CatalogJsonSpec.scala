@@ -2,7 +2,7 @@ package eu.neverblink.ohi.catalog
 
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.linkml.yaml.{LinkmlYamlCodec, NodeJson}
-import eu.neverblink.ohi.model.generated.error.*
+import eu.neverblink.ohi.model.generated.*
 import java.nio.file.{Files, Path}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

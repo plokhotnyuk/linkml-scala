@@ -5,7 +5,7 @@ import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.ohi.catalog.CatalogClient
-import eu.neverblink.ohi.model.generated.config.CatalogConfig
+import eu.neverblink.ohi.model.generated.CatalogConfig
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.ConcurrentLinkedQueue

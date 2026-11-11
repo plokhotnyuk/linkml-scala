@@ -1,8 +1,7 @@
 package eu.neverblink.ohi.model
 
 import eu.neverblink.linkml.runtime.{Uri, stringify}
-import eu.neverblink.ohi.model.generated.lock.*
-import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockOperation}
+import eu.neverblink.ohi.model.generated.*
 import java.nio.file.{Files, Path}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

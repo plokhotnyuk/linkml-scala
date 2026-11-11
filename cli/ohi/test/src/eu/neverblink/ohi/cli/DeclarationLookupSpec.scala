@@ -1,7 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
-import eu.neverblink.ohi.cli.generated.declaration.Format
+import eu.neverblink.ohi.model.generated.{Format, ProjectErrorCode}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

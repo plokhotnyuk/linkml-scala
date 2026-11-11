@@ -1,0 +1,17 @@
+id: https://ohi.neverblink.eu/contracts/all
+name: ohi_all
+title: ohi models
+description: >-
+  The models of the ohi SDKs and of the ohi CLI, for the Scala code, which has them all in one
+  package.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- sdk
+- cli/declaration
+- cli/cli-delivery
+- cli/cli-file-error
+- cli/project-error
+- cli/project-result

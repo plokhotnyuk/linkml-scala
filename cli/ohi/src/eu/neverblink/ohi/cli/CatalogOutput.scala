@@ -3,10 +3,14 @@ package eu.neverblink.ohi.cli
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileError
-import eu.neverblink.ohi.model.generated.{ArtifactOrigin, Publication}
-import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
+import eu.neverblink.ohi.model.generated.{
+  ArtifactOrigin,
+  CliFileError,
+  DeliveryResultImpl,
+  Publication,
+  SearchHit,
+  SearchResult,
+}
 
 import java.net.URI
 import scala.collection.mutable.ArrayBuffer
@@ -16,7 +20,7 @@ import CliFormatting.{clean, styled}
 private[cli] object CatalogOutput {
   private val searchCodec: LinkmlYamlCodec[SearchResult] = LinkmlYamlCodec.derived
   private val publicationCodec: LinkmlYamlCodec[Publication] = LinkmlYamlCodec.derived
-  private val deliveryCodec: LinkmlYamlCodec[DeliveryResult] = LinkmlYamlCodec.derived
+  private val deliveryCodec: LinkmlYamlCodec[DeliveryResultImpl] = LinkmlYamlCodec.derived
   private val fileErrorCodec: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
   def search(
@@ -130,7 +134,7 @@ private[cli] object CatalogOutput {
       output.mkString("\n")
     }
 
-  def delivery(result: DeliveryResult): String =
+  def delivery(result: DeliveryResultImpl): String =
     JsonUtil.yamlToJson(deliveryCodec.encode(result))
 
   def fileError(error: CliFileError): String =

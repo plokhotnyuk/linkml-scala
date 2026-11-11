@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs, { type FileHandle } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import type { Lock } from "./generated_lock.js";
+import type { Lock } from "./generated.js";
 import { decodeLock, encodeLock, LockException } from "./lock.js";
 
 function fileFailure(cause: unknown, operation: "READ" | "WRITE", path: string, message: string): LockException {

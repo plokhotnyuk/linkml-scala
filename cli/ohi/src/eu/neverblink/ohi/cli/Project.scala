@@ -1,21 +1,7 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.declaration.{
-  Declaration,
-  Format as DeclarationFormat,
-  ProjectDependency,
-}
-import eu.neverblink.ohi.cli.generated.projectresult.LockFileResult
-import eu.neverblink.ohi.cli.generated.projecterror.{
-  ProjectError,
-  ProjectErrorCode,
-  ProjectOperation,
-}
-import eu.neverblink.ohi.cli.generated.projectresult
+import eu.neverblink.ohi.model.generated.*
 import eu.neverblink.ohi.model.{LockException, LockFiles, LockJson}
-import eu.neverblink.ohi.model.generated.{Artifact, Publication}
-import eu.neverblink.ohi.model.generated.lock
-import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
 import eu.neverblink.linkml.runtime.stringify
 
 import java.nio.file.{Files, Path}
@@ -30,7 +16,7 @@ private[cli] final class Project(
     val operation: ProjectOperation,
     createDeclaration: (Path, Declaration) => Unit = DeclarationFiles.create,
     writeDeclaration: (Path, Declaration) => Unit = DeclarationFiles.write,
-    writeLock: (Path, lock.Lock) => Unit = LockFiles.write,
+    writeLock: (Path, Lock) => Unit = LockFiles.write,
 ) {
   private val declarationPath = directory.resolve("ohi.yaml")
   private val lockPath = directory.resolve("ohi.lock.json")
@@ -48,9 +34,9 @@ private[cli] final class Project(
     */
   def init(
       createParents: Boolean,
-      defaultFormat: DeclarationFormat = DeclarationFormat.LinkmlYaml,
+      defaultFormat: Format = Format.LinkmlYaml,
       downloadDir: String = ".ohi",
-  ): projectresult.ProjectResult = {
+  ): ProjectResult = {
     if createParents then
       storage(s"Cannot create project directory '$directory'") {
         Files.createDirectories(directory)
@@ -85,7 +71,7 @@ private[cli] final class Project(
       format: Option[String],
       inspect: String => Publication,
       fetch: String => Array[Byte],
-  ): projectresult.ProjectResult = {
+  ): ProjectResult = {
     val previous = read(allowMissing = true)
     val missing = !exists(declarationPath)
     val metadata = new ProjectLock.Inspection(inspect)
@@ -107,7 +93,7 @@ private[cli] final class Project(
           input,
           format,
           metadata,
-          Some(ProjectFormat.toModel(previous.defaultFormat)),
+          Some(previous.defaultFormat),
         )
         (dependency(resolved._1, resolved._2), resolved._1, resolved._2)
     }
@@ -116,7 +102,7 @@ private[cli] final class Project(
     val declaration =
       if changed then previous.copy(dependencies = previous.dependencies :+ requirement)
       else previous
-    val pair = lock.ArtifactSelectionImpl(publication.baseUrl, selected.url)
+    val pair = ArtifactSelectionImpl(publication.baseUrl, selected.url)
     val complete = build(declaration, metadata, Some(requirement -> pair))
     val plan = prepare(DownloadDestination.fromProject(directory, declaration), complete)
     if changed then {
@@ -137,7 +123,7 @@ private[cli] final class Project(
   def refresh(
       inspect: String => Publication,
       check: Boolean = false,
-  ): projectresult.ProjectResult = {
+  ): ProjectResult = {
     val declaration = read(allowMissing = false)
     if check then {
       val existing = readRecords()._2
@@ -161,7 +147,7 @@ private[cli] final class Project(
       fetch: String => Array[Byte],
       init: Boolean = false,
       mode: Project.LockMode = Project.LockMode.Update,
-  ): projectresult.ProjectResult = {
+  ): ProjectResult = {
     val (declaration, existing) = readRecords()
     existing.foreach(requireVersion2)
     val current = declaration match {
@@ -191,7 +177,7 @@ private[cli] final class Project(
       createDeclaration(
         declarationPath,
         Declaration(
-          defaultFormat = DeclarationFormat.LinkmlYaml,
+          defaultFormat = Format.LinkmlYaml,
           downloadDir = ".ohi",
           dependencies = ProjectLock.requirements(complete),
           formatVersion = 1,
@@ -208,7 +194,7 @@ private[cli] final class Project(
     result(LockDownload.install(plan, fetch))
   }
 
-  private def requireVersion2(complete: lock.Lock): Unit =
+  private def requireVersion2(complete: Lock): Unit =
     if complete.formatVersion != 2 then
       throw new LockException(
         LockError(
@@ -222,7 +208,7 @@ private[cli] final class Project(
       )
 
   /** Whether the lock's direct requirements are the declared dependencies, in any order. */
-  private def matches(declaration: Declaration, complete: lock.Lock): Boolean =
+  private def matches(declaration: Declaration, complete: Lock): Boolean =
     ProjectLock.requirements(complete).sortBy(dependency =>
       (dependency.ontology, stringify(dependency.format)),
     ) == declaration.dependencies.sortBy(dependency =>
@@ -239,7 +225,7 @@ private[cli] final class Project(
 
   private def lockCommand: String = s"ohi lock --project ${CliFormatting.quote(directory.toString)}"
 
-  private def prepare(selected: DownloadDestination, complete: lock.Lock): LockDownload.Plan = {
+  private def prepare(selected: DownloadDestination, complete: Lock): LockDownload.Plan = {
     destination = Some(selected)
     LockDownload.prepare(complete.files, selected.directory, selected.managed)
   }
@@ -249,7 +235,7 @@ private[cli] final class Project(
     OntologyReference.parse(reference) match {
       case Right((_, _, Some(_))) =>
         ProjectDependency(
-          format = ProjectFormat.toDeclaration(artifact.format),
+          format = artifact.format,
           ontology = reference,
         )
       case _ =>
@@ -316,7 +302,7 @@ private[cli] final class Project(
       )
     declaration.getOrElse(
       Declaration(
-        defaultFormat = DeclarationFormat.LinkmlYaml,
+        defaultFormat = Format.LinkmlYaml,
         downloadDir = ".ohi",
         dependencies = Seq.empty,
         formatVersion = 1,
@@ -324,7 +310,7 @@ private[cli] final class Project(
     )
   }
 
-  private def readRecords(): (Option[Declaration], Option[lock.Lock]) = {
+  private def readRecords(): (Option[Declaration], Option[Lock]) = {
     requireDirectory()
     refuseSymlink(declarationPath)
     refuseSymlink(lockPath)
@@ -336,8 +322,8 @@ private[cli] final class Project(
   private def build(
       declaration: Declaration,
       metadata: ProjectLock.Inspection,
-      requested: Option[(ProjectDependency, lock.ArtifactSelectionImpl)] = None,
-  ): lock.Lock = {
+      requested: Option[(ProjectDependency, ArtifactSelectionImpl)] = None,
+  ): Lock = {
     val selections = declaration.dependencies.map { requirement =>
       requested.filter(_._1 == requirement).map(_._2).getOrElse {
         val (publication, artifact) = resolve(
@@ -345,7 +331,7 @@ private[cli] final class Project(
           Some(stringify(requirement.format)),
           metadata,
         )
-        lock.ArtifactSelectionImpl(publication.baseUrl, artifact.url)
+        ArtifactSelectionImpl(publication.baseUrl, artifact.url)
       }
     }
     val complete = ProjectLock.build(selections, metadata)
@@ -353,14 +339,9 @@ private[cli] final class Project(
     complete
   }
 
-  private def result(files: Seq[LockFileResult] = Seq.empty): projectresult.ProjectResult =
-    projectresult.ProjectResult(
-      operation = operation match {
-        case ProjectOperation.Init => projectresult.ProjectOperation.Init
-        case ProjectOperation.Add => projectresult.ProjectOperation.Add
-        case ProjectOperation.Lock => projectresult.ProjectOperation.Lock
-        case ProjectOperation.Sync => projectresult.ProjectOperation.Sync
-      },
+  private def result(files: Seq[LockFileResult] = Seq.empty): ProjectResult =
+    ProjectResult(
+      operation = operation,
       projectDirectory = directory.toString,
       declarationChanged = declarationChanged,
       declarationCreated = declarationCreated,

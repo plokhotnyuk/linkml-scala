@@ -1,6 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
+import eu.neverblink.ohi.model.generated.ProjectErrorCode
 
 private[cli] final class ProjectException(
     val code: ProjectErrorCode,

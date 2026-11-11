@@ -2,16 +2,12 @@ package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.LinkmlAny
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import eu.neverblink.ohi.cli.generated.fileerror.CliFileError
-import eu.neverblink.ohi.model.generated.error.CatalogError
-import eu.neverblink.ohi.model.generated.lockerror.LockError
+import eu.neverblink.ohi.model.generated.CatalogError
 import org.virtuslab.yaml.{Node, Tag, parseYaml}
 import java.nio.file.Path
 
 private[cli] object ErrorOutput {
-  given catalogErrorCodec: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
-  given lockErrorCodec: LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
-  given fileErrorCodec: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
+  val catalogErrorCodec: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
 
   private def heading(message: String, colored: Boolean): String =
     s"${CliFormatting.styled("Error:", "1;31", colored)} ${CliFormatting.clean(message)}"
@@ -159,10 +155,5 @@ private[cli] object ErrorOutput {
     else "Correct the reported lock problem and try again."
     (Seq(heading(summary, colored)) ++ path.map(field("Path", _, colored)) :+
       s"Details: ${CliFormatting.clean(message)}").mkString("\n") -> recovery
-  }
-
-  // Imported records have distinct generated Scala types.
-  extension [S](value: S)(using from: LinkmlYamlCodec[S]) {
-    def as[T](using to: LinkmlYamlCodec[T]): T = to.decode(from.encode(value))
   }
 }

@@ -1,8 +1,13 @@
-import type { Publication } from "./generated.js";
-import type { CatalogConfig } from "./generated_config.js";
-import type { CatalogError, CatalogOperation } from "./generated_error.js";
-import type { SearchRequest } from "./generated_search_request.js";
-import type { FacetCount, SearchHit, SearchResult } from "./generated_search.js";
+import type {
+  CatalogConfig,
+  CatalogError,
+  CatalogOperation,
+  FacetCount,
+  Publication,
+  SearchHit,
+  SearchRequest,
+  SearchResult,
+} from "./generated.js";
 import { decodePublication, formats as knownFormats, isNew } from "./publication.js";
 
 const searchPath = "/search/collections/packages/documents/search";

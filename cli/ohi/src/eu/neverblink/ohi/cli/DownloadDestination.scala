@@ -1,7 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.declaration.Declaration
-import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
+import eu.neverblink.ohi.model.generated.{Declaration, ProjectErrorCode}
 
 import java.nio.file.{InvalidPathException, Path}
 

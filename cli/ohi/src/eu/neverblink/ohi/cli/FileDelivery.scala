@@ -1,6 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.fileerror.{CliFileErrorCode, CliFileError}
+import eu.neverblink.ohi.model.generated.{CliFileErrorCode, CliFileError}
 
 import java.io.OutputStream
 import java.nio.file.{FileAlreadyExistsException, Files, NoSuchFileException, Path}

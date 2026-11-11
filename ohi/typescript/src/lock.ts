@@ -1,5 +1,4 @@
-import type { ArtifactSelection, Lock } from "./generated_lock.js";
-import type { LockError, LockOperation } from "./generated_lock_error.js";
+import type { ArtifactSelection, Lock, LockError, LockOperation } from "./generated.js";
 
 export class LockException extends Error {
   constructor(readonly error: LockError, options?: ErrorOptions) {
