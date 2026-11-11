@@ -122,20 +122,23 @@ The default `metadata` table reads each metaslot from the property the LinkML me
 | Metaslot          | Read from, in order                                                       |
 |-------------------|---------------------------------------------------------------------------|
 | `title`           | `rdfs:label`, `dcterms:title`, `dc:title`, `skos:prefLabel`                 |
-| `description`     | `skos:definition`, `obo:IAO_0000115`, `rdfs:comment`, `dcterms:description`, `dc:description` |
-| `aliases`         | `skos:altLabel`, `oboInOwl:hasExactSynonym`, `rdfs:label`, `skos:prefLabel`  |
-| `comments`        | `skos:note`, `rdfs:comment`, `skos:scopeNote`                               |
-| `notes`           | `skos:editorialNote`, `skos:historyNote`, `skos:changeNote`                 |
-| `examples`        | `skos:example`, `obo:IAO_0000112`                                           |
-| `see_also`        | `rdfs:seeAlso`                                                             |
-| `contributors`    | `dcterms:contributor`, `dcterms:creator`, `dc:creator`, `dc:contributor`    |
-| `created_on`      | `pav:createdOn`, `dcterms:created`, `dcterms:issued`                        |
+| `description`     | `skos:definition`, `obo:IAO_0000115`, `prov:definition`, `rdfs:comment`, `dcterms:description`, `dc:description`, `obo:IAO_0000600`, `dcterms:abstract`. For the ontology itself, `dcterms:description`, `dc:description` and `dcterms:abstract` come first |
+| `aliases`         | `skos:altLabel`, `oboInOwl:hasExactSynonym`, `obo:IAO_0000118`, `obo:IAO_0000111`, `rdfs:label`, `skos:prefLabel`, `oboInOwl:hasRelatedSynonym`, `oboInOwl:hasBroadSynonym`, `oboInOwl:hasNarrowSynonym`, `oboInOwl:hasSynonym` |
+| `comments`        | `skos:note`, `rdfs:comment`, `skos:scopeNote`, `vann:usageNote`             |
+| `notes`           | `skos:editorialNote`, `skos:historyNote`, `skos:changeNote`, `obo:IAO_0000116`, `obo:IAO_0000232` |
+| `examples`        | `skos:example`, `obo:IAO_0000112`, `vann:example`                           |
+| `see_also`        | `rdfs:seeAlso`, `obo:IAO_0000233`                                          |
+| `status`          | `bibo:status`, `vs:term_status`, `obo:IAO_0000114`                          |
+| `contributors`    | `dcterms:contributor`, `dcterms:creator`, `dc:creator`, `dc:contributor`, `obo:IAO_0000117` |
+| `created_by`      | `pav:createdBy`, `oboInOwl:created_by`                                      |
+| `created_on`      | `pav:createdOn`, `dcterms:created`, `oboInOwl:creation_date`, `dcterms:issued` |
 | `last_updated_on` | `pav:lastUpdatedOn`, `dcterms:modified`                                     |
-| `license`         | `dcterms:license`, `dc:rights`, `cc:license`                                |
+| `keywords`        | `schema:keywords`, `dc:subject`                                             |
+| `license`         | `dcterms:license`, `cc:license`, `dc:rights`, `dcterms:rights`              |
 | `version`         | `pav:version`, `owl:versionInfo` (and `owl:versionIRI` on the ontology)     |
 | others            | the property from the metamodel, such as `skos:exactMatch` for `exact_mappings` |
 
-A value goes to the first metaslot that lists its property and still has room. So a class with two `rdfs:comment`s gets the first as its `description` and the second in `comments`. A label that is just the element's name is dropped, and so is a comment that repeats the description.
+A value goes to the first metaslot that lists its property and still has room. So a class with two `rdfs:comment`s gets the first as its `description` and the second in `comments`. A label that is just the element's name is dropped, and so is a comment that repeats the description. The importer also reads subproperties of the listed properties. For example, PROV-O's `prov:editorsDefinition` fills `description` like `prov:definition` does.
 
 ## Options
 

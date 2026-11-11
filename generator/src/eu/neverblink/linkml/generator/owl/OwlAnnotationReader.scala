@@ -3,7 +3,7 @@ package eu.neverblink.linkml.generator.owl
 import eu.neverblink.linkml.generator.options.OwlImportConfig
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.metadataSources
 import eu.neverblink.linkml.metamodel.Annotation as LinkmlAnnotation
-import eu.neverblink.linkml.rdf.{Iri, IntBuffer, LanguageLiteral, Literal, Node, XmlSchema}
+import eu.neverblink.linkml.rdf.{Iri, IntBuffer, LanguageLiteral, Literal, Node, Rdfs, XmlSchema}
 import eu.neverblink.linkml.runtime.*
 
 import scala.collection.immutable.VectorMap
@@ -15,34 +15,71 @@ import scala.runtime.IntRef
   *
   * @param annotationsOf
   *   Annotations by term IRI.
+  * @param subPropertiesOf
+  *   The subproperties of each property, from the ontology's `rdfs:subPropertyOf` axioms.
+  * @param isOntology
+  *   Whether an IRI is the ontology's own.
   */
 private[owl] final class OwlAnnotationReader(
     annotationsOf: collection.Map[String, collection.Seq[Annotation]],
     ontologyAnnotations: Seq[Annotation],
     config: OwlImportConfig,
     names: OwlImportNames,
+    subPropertiesOf: collection.Map[String, collection.Seq[String]] = Map.empty,
+    isOntology: String => Boolean = _ => false,
 ) {
   import OwlAnnotationReader.*
 
-  /** The metaslots to fill, each with its annotation properties in order of preference. */
-  private val sources = {
-    val sources =
-      mutable.ArrayBuffer.empty[(field: Metadata.Field, properties: mutable.ArrayBuffer[String])]
-    config.metadataSources.foreach { source =>
+  /** Subproperties added to the sources. Text metaslots take only their literals. */
+  private val addedSubProperties = mutable.HashSet.empty[String]
+
+  /** Lists the properties to read for each metaslot. If the ontology declares a subproperty of a
+    * listed property, the subproperty is added to the list right after its parent.
+    */
+  private def sourcesOf(metadataSources: Seq[(String, Seq[String])]): Sources = {
+    val listed = mutable.ArrayBuffer.empty[(field: Metadata.Field, properties: Seq[String])]
+    val listedProperties = mutable.HashSet.empty[String]
+    metadataSources.foreach { source =>
       val field = Metadata.byName.getOrElse(source._1, null)
       if (field ne null) {
-        val properties = mutable.ArrayBuffer.empty[String]
-        source._2.foreach(p => properties.addOne(names.expand(p)))
-        sources.addOne((field = field, properties = properties))
+        val properties = source._2.map(names.expand)
+        listedProperties.addAll(properties)
+        listed.addOne((field = field, properties = properties))
       }
+    }
+    val sources: Sources = mutable.ArrayBuffer.empty
+    listed.foreach { source =>
+      val properties = mutable.ArrayBuffer.empty[String]
+      val seen = mutable.HashSet.empty[String]
+      def addWithSubProperties(p: String): Unit =
+        if (seen.add(p)) {
+          properties.addOne(p)
+          subPropertiesOf.getOrElse(p, Nil).foreach { sub =>
+            if (!listedProperties.contains(sub)) {
+              addedSubProperties.addOne(sub)
+              addWithSubProperties(sub)
+            }
+          }
+        }
+      source.properties.foreach(addWithSubProperties)
+      sources.addOne((field = source.field, properties = properties))
     }
     sources
   }
 
-  /** The annotation properties of human-readable metaslots, such as title and description. */
+  private val sources = sourcesOf(config.metadataSources())
+
+  private val ontologySources = sourcesOf(config.metadataSources(ontology = true))
+
+  /** The annotation properties of human-readable metaslots, such as title and description. Examples
+    * are skipped, as they are often code.
+    */
   private val humanTextProperties: mutable.HashSet[String] = {
     val properties = mutable.HashSet.empty[String]
-    sources.foreach(s => if (Metadata.humanText(s.field.name)) properties.addAll(s.properties))
+    sources.foreach { s =>
+      val name = s.field.name
+      if (Metadata.humanText(name) && name != "examples") properties.addAll(s.properties)
+    }
     properties
   }
 
@@ -106,9 +143,28 @@ private[owl] final class OwlAnnotationReader(
   def documentation(iri: String): Documentation =
     documentation(annotationsOf.getOrElse(iri, Nil))
 
+  /** Skips `rdfs:isDefinedBy` that point to this ontology, since the term's schema says the same.
+    */
   def documentation(annotations: collection.Seq[Annotation]): Documentation = {
+    val own = mutable.ArrayBuffer.empty[Annotation]
+    annotations.foreach { a =>
+      if (a.property != Rdfs.isDefinedBy.value || !isOntology(textOrIri(a.value))) own.addOne(a)
+    }
+    documentationFrom(own, sources)
+  }
+
+  /** Like [[documentation]], with the defaults for an ontology header
+    * (`OwlImportConfigs.defaultOntologyMetadata`).
+    */
+  def ontologyDocumentation(annotations: collection.Seq[Annotation]): Documentation =
+    documentationFrom(annotations, ontologySources)
+
+  private def documentationFrom(
+      annotations: collection.Seq[Annotation],
+      sources: Sources,
+  ): Documentation = {
     val rest = mutable.ArrayBuffer.empty[Annotation]
-    val metadata = metadataOf(annotations, rest)
+    val metadata = metadataOf(annotations, sources, rest)
     (metadata = metadata, annotations = linkmlAnnotations(rest))
   }
 
@@ -120,6 +176,7 @@ private[owl] final class OwlAnnotationReader(
     */
   private def metadataOf(
       annotations: collection.Seq[Annotation],
+      sources: Sources,
       remaining: mutable.ArrayBuffer[Annotation],
   ): Metadata = {
     annotations.foreach(a => remaining.addOne(plainInLanguage(a)))
@@ -133,10 +190,15 @@ private[owl] final class OwlAnnotationReader(
     def findUntakenMatches(field: Metadata.Field, property: String): Unit = {
       matches.clear()
       matchIndices.clear()
+      // gist's `gist:rangeIncludes` is a subproperty of `skos:scopeNote` with class IRIs as values.
+      val textOnly = field.kind == Metadata.Kind.Text && addedSubProperties.contains(property)
       var i = 0
       while (i < annotationCount) {
         val a = remaining(i)
-        if (!taken.get(i) && a.property == property && (valueOf(field, a.value) ne null)) {
+        if (
+          !taken.get(i) && a.property == property && !(textOnly && a.value.isInstanceOf[Iri]) &&
+          (valueOf(field, a.value) ne null)
+        ) {
           matches.addOne(a)
           matchIndices.add(i)
         }
@@ -149,14 +211,18 @@ private[owl] final class OwlAnnotationReader(
       matchIndices.truncate(1)
     }
 
+    // PROV-O gives some terms the same link through two subproperties of `rdfs:seeAlso`.
     def addMatchesToFieldValues(field: Metadata.Field, isSingleValued: Boolean): Unit =
       if (field.kind == Metadata.Kind.Text) {
-        if (!isSingleValued) textsFromAllProperties.addAll(matches)
-        else if (matches.nonEmpty) fieldValues.addOne(textOf(matches))
+        if (!isSingleValued) {
+          matches.foreach { a =>
+            if (!textsFromAllProperties.exists(_.value == a.value)) textsFromAllProperties.addOne(a)
+          }
+        } else if (matches.nonEmpty) fieldValues.addOne(textOf(matches))
       } else {
         matches.foreach { a =>
           val value = valueOf(field, a.value)
-          if (value ne null) fieldValues.addOne(value)
+          if ((value ne null) && !fieldValues.contains(value)) fieldValues.addOne(value)
         }
       }
 
@@ -217,20 +283,9 @@ private[owl] final class OwlAnnotationReader(
         value match {
           // An IRI that can't be a URI in the schema is left to the annotations, as text
           case i: Iri => if (names.isWritable(i.value)) names.uri(i.value) else null
-          // Text is a reference only if it is a URL, a URN or a CURIE with a known prefix, and its
-          // expansion can be a URI in the schema.
-          case l: Literal =>
-            val v = l.value
-            if (v.isEmpty) null
-            else if (v.contains("://") || v.startsWith("urn:")) {
-              if (names.isWritable(v)) names.uri(v) else null
-            } else {
-              val iri = names.expand(v)
-              if (!iri.equals(v) && names.isWritable(iri)) {
-                names.ensurePrefix(iri)
-                names.uri(iri)
-              } else null
-            }
+          case l: Literal => referenceIn(l.value)
+          // ENVO gives some links a language tag.
+          case l: LanguageLiteral => referenceIn(l.value)
           case _ => null
         }
       case _ =>
@@ -238,6 +293,21 @@ private[owl] final class OwlAnnotationReader(
           case i: Iri => i.value
           case other => textIn(other)
         }
+    }
+
+  /** A URL, a URN or a CURIE with a known prefix, if its expansion can be a URI in the schema.
+    * Otherwise `null`.
+    */
+  private def referenceIn(v: String): UriOrCurie =
+    if (v.isEmpty) null
+    else if (v.contains("://") || v.startsWith("urn:")) {
+      if (names.isWritable(v)) names.uri(v) else null
+    } else {
+      val iri = names.expand(v)
+      if (!iri.equals(v) && names.isWritable(iri)) {
+        names.ensurePrefix(iri)
+        names.uri(iri)
+      } else null
     }
 
   /** One text from the values of annotations, with a language for each if there are several. */
@@ -330,6 +400,16 @@ private[owl] object OwlAnnotationReader {
 
   /** The metaslots of a term, and its other annotations. */
   type Documentation = (metadata: Metadata, annotations: Map[String, LinkmlAnnotation])
+
+  /** The metaslots to fill, each with its annotation properties in order of preference. */
+  private type Sources =
+    mutable.ArrayBuffer[(field: Metadata.Field, properties: mutable.ArrayBuffer[String])]
+
+  /** The text of a literal or an IRI, or `null` for anything else. */
+  private def textOrIri(node: Node): String = node match {
+    case i: Iri => i.value
+    case other => textIn(other)
+  }
 
   private val singleValued = Set(
     "title",

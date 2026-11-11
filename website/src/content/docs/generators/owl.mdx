@@ -48,7 +48,7 @@ The generator aims for OWL 2 DL. SAREF, SOSA, gist, PROV-O and D3FEND, after a t
 | type                                                       | its `uri`; with constraints, a datatype restriction on it (`xsd:integer[>= 0]`)                        |
 | `pattern`, `minimum_value`, `maximum_value`, `minimum_length`, `maximum_length` | `xsd:pattern`, `xsd:minInclusive`, `xsd:maxInclusive`, `xsd:minLength`, `xsd:maxLength`. An XSD pattern matches the whole value, so `^abc$` is written `abc`, and `abc` is written `.*abc.*` |
 | `title`                                                    | `rdfs:label`, tagged with `in_language` when the schema has one |
-| `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`)                                  |
+| `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`). The schema's description is `dcterms:description`. |
 | other documentation (`aliases`, `comments`, `see_also`, mappings, …) | the property the LinkML metamodel gives it, such as `skos:altLabel`, `skos:note`, `rdfs:seeAlso` |
 | `annotations`                                              | annotations with the tag as the property. A value is an IRI if it is a full IRI, with `://` or a scheme such as `urn`, `mailto`, `did`, `info` or `tag`, else text, even if it looks like a CURIE |
 | `deprecated`                                               | `owl:deprecated true`                                                                                  |
@@ -63,7 +63,7 @@ These differences are in place mostly to make the OWL describe the same RDF data
 - **Identifier slots whose values are IRIs are optional properties.** Such an identifier is the IRI of the node, so stating it as a property too is optional. Other identifiers, such as a string ISBN, are required.
 - **Slots with a `uri` or `uriorcurie` range, or with an `implicit_prefix`, are object properties without a range**, since their values are IRIs in RDF, as in the SHACL generator.
 - **Permissible values are individuals** of a class defined by `owl:oneOf`. `gen-owl` makes them classes by default, which is still possible in ohi LinkML with the `--permissible-values class` option.
-- **Descriptions are `rdfs:comment`** by default, rather than the metamodel's `skos:definition`. If you select the `--metadata-profile linkml` option, descriptions will be written as `skos:definition`, as `gen-owl` does by default.
+- **Descriptions are `rdfs:comment`** by default, rather than the metamodel's `skos:definition`. If you select the `--metadata-profile linkml` option, descriptions will be written as `skos:definition`, as `gen-owl` does by default. The schema's description is always written as `dcterms:description`.
 - **`owl:allValuesFrom` restrictions that repeat a property's range are kept** for the slots a class lists itself. They record which classes use which slots, which the importer needs. A class that only refines an inherited slot in `slot_usage` gets one only when it narrows the range.
 - `type_designator` rules, `rules` and `classification_rules` are not written.
 

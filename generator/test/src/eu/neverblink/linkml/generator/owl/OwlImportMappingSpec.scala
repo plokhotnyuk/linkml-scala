@@ -471,6 +471,104 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       )
         .classes("A").description shouldBe Some(PlainText("Defined."))
     }
+
+    "read metaslots from the common properties of other vocabularies" in {
+      val prov = "http://www.w3.org/ns/prov#"
+      val vann = "http://purl.org/vocab/vann/"
+      val a = schema(
+        cls("A"),
+        AnnotationAssertion(ns + "A", Annotation.text(prov + "definition", "Defined.")),
+        AnnotationAssertion(ns + "A", Annotation.text(vann + "example", "An example.")),
+        AnnotationAssertion(
+          ns + "A",
+          Annotation.text("http://www.w3.org/2003/06/sw-vocab-status/ns#term_status", "stable"),
+        ),
+      ).classes("A")
+      a.description shouldBe Some(PlainText("Defined."))
+      a.examples.map(_.value) shouldBe Seq(Some("An example."))
+      a.status shouldBe Some("stable")
+      a.annotations shouldBe empty
+    }
+
+    "read the OBO term editor, creator, creation date and tracker item" in {
+      val obo = "http://purl.obolibrary.org/obo/"
+      val oboInOwl = "http://www.geneontology.org/formats/oboInOwl#"
+      val editor = "https://orcid.org/0000-0002-1825-0097"
+      val creator = "https://orcid.org/0000-0001-5109-3700"
+      val a = schema(
+        cls("A"),
+        AnnotationAssertion(ns + "A", Annotation(obo + "IAO_0000117", Iri(editor))),
+        AnnotationAssertion(ns + "A", Annotation.text(oboInOwl + "created_by", creator)),
+        AnnotationAssertion(
+          ns + "A",
+          Annotation(
+            oboInOwl + "creation_date",
+            Literal("2021-04-14T18:57:18Z", XmlSchema.dateTime),
+          ),
+        ),
+        AnnotationAssertion(
+          ns + "A",
+          Annotation(obo + "IAO_0000233", Iri("https://github.com/example/issues/1")),
+        ),
+      ).classes("A")
+      a.contributors shouldBe Seq(Uri(editor))
+      a.createdBy shouldBe Some(Uri(creator))
+      a.createdOn.map(_.value) shouldBe Some("2021-04-14T18:57:18Z")
+      a.seeAlso shouldBe Seq(Uri("https://github.com/example/issues/1"))
+      a.annotations shouldBe empty
+    }
+
+    "read a link with a language tag as a reference" in {
+      // The untagged comment leaves the schema without a language, so the link keeps its tag.
+      val a = schema(
+        cls("A"),
+        AnnotationAssertion(ns + "A", Annotation.text(Rdfs.comment.value, "A thing.")),
+        AnnotationAssertion(
+          ns + "A",
+          Annotation(Rdfs.seeAlso.value, LanguageLiteral("https://example.com/page", "en")),
+        ),
+      ).classes("A")
+      a.seeAlso shouldBe Seq(Uri("https://example.com/page"))
+      a.annotations shouldBe empty
+    }
+
+    "read a subproperty of a metaslot's property like that property" in {
+      val a = schema(
+        cls("A"),
+        Declaration(EntityKind.AnnotationProperty, ns + "usageNote"),
+        Declaration(EntityKind.AnnotationProperty, ns + "explanation"),
+        SubPropertyOf(ns + "usageNote", skosNote),
+        SubPropertyOf(ns + "explanation", ns + "usageNote"),
+        AnnotationAssertion(ns + "A", Annotation.text(ns + "usageNote", "Use it.")),
+        AnnotationAssertion(ns + "A", Annotation.text(ns + "explanation", "Why.")),
+      ).classes("A")
+      a.comments shouldBe Seq(PlainText("Use it."), PlainText("Why."))
+      a.annotations shouldBe empty
+    }
+
+    "keep an IRI from a subproperty of a text metaslot's property as an annotation" in {
+      val a = schema(
+        cls("A"),
+        cls("B"),
+        Declaration(EntityKind.AnnotationProperty, ns + "rangeIncludes"),
+        SubPropertyOf(ns + "rangeIncludes", skosNote),
+        AnnotationAssertion(ns + "A", Annotation(ns + "rangeIncludes", Iri(ns + "B"))),
+      ).classes("A")
+      a.comments shouldBe empty
+      a.annotations.keySet shouldBe Set("ex:rangeIncludes")
+    }
+
+    "not move a property that a metaslot lists to where its parent is" in {
+      // SKOS makes skos:altLabel a subproperty of rdfs:label, but it is still not a title.
+      val skos = "http://www.w3.org/2004/02/skos/core#"
+      val a = schema(
+        cls("A"),
+        SubPropertyOf(skos + "altLabel", Rdfs.label.value),
+        AnnotationAssertion(ns + "A", Annotation.text(skos + "altLabel", "Other name")),
+      ).classes("A")
+      a.title shouldBe None
+      a.aliases shouldBe Seq(PlainText("Other name"))
+    }
   }
 
   "names" should {
@@ -589,6 +687,58 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       )
       config.schemaId shouldBe Some("https://example.org/mine")
       config.classStyle shouldBe NameStyle.Pascal
+    }
+
+    "take its description from dcterms:description before rdfs:comment" in {
+      val s = OwlImporter().importOntology(
+        Ontology(
+          iri = Some("https://example.org/onto"),
+          annotations = Seq(
+            Annotation.text(Rdfs.comment.value, "Version 2: renamed A."),
+            Annotation.text("http://purl.org/dc/terms/description", "Things and more things."),
+          ),
+          axioms = Seq(cls("A")),
+        ),
+      ).schema
+      s.description shouldBe Some(PlainText("Things and more things."))
+      s.comments shouldBe Seq(PlainText("Version 2: renamed A."))
+    }
+
+    "take its license from cc:license before a rights statement" in {
+      val s = OwlImporter().importOntology(
+        Ontology(
+          iri = Some("https://example.org/onto"),
+          annotations = Seq(
+            Annotation.text("http://purl.org/dc/elements/1.1/rights", "Copyright 2019-"),
+            Annotation(
+              "http://creativecommons.org/ns#license",
+              Iri("https://creativecommons.org/licenses/by/4.0/"),
+            ),
+          ),
+          axioms = Seq(cls("A")),
+        ),
+      ).schema
+      s.license shouldBe Some("https://creativecommons.org/licenses/by/4.0/")
+    }
+
+    "leave out an rdfs:isDefinedBy that names the ontology, and keep one that names another" in {
+      val s = OwlImporter().importOntology(
+        Ontology(
+          iri = Some("https://example.org/onto"),
+          prefixes = prefixes,
+          axioms = Seq(
+            cls("A"),
+            cls("B"),
+            AnnotationAssertion(
+              ns + "A",
+              Annotation(Rdfs.isDefinedBy.value, Iri("https://example.org/onto#")),
+            ),
+            AnnotationAssertion(ns + "B", Annotation(Rdfs.isDefinedBy.value, Iri(other + "onto"))),
+          ),
+        ),
+      ).schema
+      s.classes("A").annotations shouldBe empty
+      s.classes("B").annotations.keySet shouldBe Set("rdfs:isDefinedBy")
     }
 
     "be read from N-Triples" in {

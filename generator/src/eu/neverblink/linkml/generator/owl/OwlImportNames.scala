@@ -367,6 +367,7 @@ private[owl] object OwlImportNames {
     "dcterms" -> "http://purl.org/dc/terms/",
     "dc" -> "http://purl.org/dc/elements/1.1/",
     "vann" -> "http://purl.org/vocab/vann/",
+    "vs" -> "http://www.w3.org/2003/06/sw-vocab-status/ns#",
     "foaf" -> "http://xmlns.com/foaf/0.1/",
     "schema" -> "http://schema.org/",
     "prov" -> "http://www.w3.org/ns/prov#",

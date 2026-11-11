@@ -883,7 +883,35 @@ object OwlImporter {
       naming.name(datatypes, NameGroup.Type, NameStyle.Keep)
     }
 
-    private val reader = OwlAnnotationReader(annotationsOf, ontology.annotations, config, naming)
+    // Without an ontology IRI, use the namespace
+    private val schemaId =
+      if (config.schemaId.isDefined) config.schemaId.get
+      else if (ontology.iri.isDefined) ontology.iri.get
+      else naming.defaultNamespace.stripSuffix("#")
+
+    private val reader = {
+      // Sorted by IRI, so the order of the axioms doesn't matter.
+      val subPropertiesOf = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      superProperties.foreachEntry { (sub, entries) =>
+        entries.foreach { e =>
+          subPropertiesOf.getOrElseUpdate(e.sup, mutable.ArrayBuffer.empty).addOne(sub)
+        }
+      }
+      subPropertiesOf.valuesIterator.foreach(_.sortInPlace()(using Ordering.String))
+      // DC terms has no ontology IRI. Its schema id is its namespace, which then becomes the
+      // ontology IRI in the generated OWL.
+      def isOntology(iri: String) =
+        (iri ne null) && (isOntologyNamespace(iri) || ontology.versionIri.contains(iri) ||
+          withoutSeparator(iri) == withoutSeparator(schemaId))
+      OwlAnnotationReader(
+        annotationsOf,
+        ontology.annotations,
+        config,
+        naming,
+        subPropertiesOf,
+        isOntology,
+      )
+    }
     import reader.documentation
 
     // Types
@@ -2072,7 +2100,7 @@ object OwlImporter {
           a.property != vann + "preferredNamespacePrefix"
         ) schemaDocAnnotations.addOne(a)
       }
-      val doc = documentation(schemaDocAnnotations)
+      val doc = reader.ontologyDocumentation(schemaDocAnnotations)
       // Statements about imported terms are dropped. The imported schema defines those terms.
       val importedIris = imported.keysIterator.toArray
       java.util.Arrays.sort(importedIris, Ordering.String)
@@ -2148,12 +2176,6 @@ object OwlImporter {
         warn("RDF that is not OWL", s"${unparsedCounts(p)} triples with $p")
       }
 
-      // Without an ontology IRI, use the namespace. That is how others import such vocabularies
-      // (e.g. DC terms).
-      val schemaId =
-        if (config.schemaId.isDefined) config.schemaId.get
-        else if (ontology.iri.isDefined) ontology.iri.get
-        else defaultNamespace.stripSuffix("#")
       if (!UriCurieValidator.isValidUri(schemaId))
         throw new SchemaConversionException(
           s"The schema id <$schemaId> isn't a valid URI. Set another one with `--schema-id`, or " +

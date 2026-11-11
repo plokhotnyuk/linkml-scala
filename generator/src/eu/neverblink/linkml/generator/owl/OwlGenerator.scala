@@ -38,6 +38,7 @@ class OwlGenerator(using sv: SchemaView) extends RdfGeneratorBase[OwlGeneratorOp
 object OwlGenerator {
 
   private val rdfsLabel = Rdfs.label.value
+  private val ontologyDescription = "http://purl.org/dc/terms/description"
 
   /** Annotation properties built into OWL 2, which don't need to be declared. */
   private val builtInAnnotationProperties: Set[String] = Set(
@@ -160,7 +161,8 @@ object OwlGenerator {
           ids.result()
         } else Nil
       val headerBuilder = Vector.newBuilder[Annotation]
-      addMetadataAnnotations(Metadata.of(root), headerBuilder.addOne)
+      // The importer reads an ontology's description from `dcterms:description` first.
+      addMetadataAnnotations(Metadata.of(root), headerBuilder.addOne, ontologyDescription)
       addLinkmlAnnotations(root, headerBuilder.addOne)
       addPreferredNamespace(headerBuilder)
       val header = headerBuilder.result()
@@ -319,7 +321,11 @@ object OwlGenerator {
     /** `rdfs:label` is the title in each of its languages. OWL tools show `rdfs:label`, so the
       * title goes there and not to `dcterms:title`.
       */
-    private def addMetadataAnnotations(metadata: Metadata, b: Annotation => Unit): Unit = {
+    private def addMetadataAnnotations(
+        metadata: Metadata,
+        b: Annotation => Unit,
+        description: String = descriptionProperty,
+    ): Unit = {
       // Use the element's language, or the schema's, as `gen-owl` does with `in_language`.
       val language = metadata.inLanguage.orElseFast(sv.root.inLanguage)
       metadata.title.foreachFast {
@@ -331,7 +337,7 @@ object OwlGenerator {
             b(Annotation.text(rdfsLabel, t.mapping(lang), Some(lang)))
           }
       }
-      Metadata.annotations(metadata.copy(title = None), descriptionProperty, language).foreach(b)
+      Metadata.annotations(metadata.copy(title = None), description, language).foreach(b)
     }
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
