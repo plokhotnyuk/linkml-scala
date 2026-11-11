@@ -24,6 +24,6 @@ if [ "$platform" = macOS ] || [ "$platform" = Darwin ]; then
   for binary in "$linkml" "$ohi"; do
     target=$(otool -l "$binary" | grep -A4 LC_BUILD_VERSION)
     echo "$target"
-    grep -q 'minos 14.0' <<< "$target"
+    grep -q 'minos 13.0' <<< "$target"
   done
 fi

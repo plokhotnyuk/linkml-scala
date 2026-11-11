@@ -84,7 +84,7 @@ object `package` extends Module, NativeOptional {
 
     private def macosTarget =
       // macOS target for wheel builds
-      if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=14.0")
+      if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=13.0")
       else Seq.empty
 
     /** _LIBUNWIND_IS_NATIVE_ONLY: see https://github.com/scala-native/scala-native/pull/5034

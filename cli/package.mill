@@ -43,7 +43,7 @@ object `package` extends Module {
     // Without this, the minimum macOS version is the one of the build machine.
     private def macosTarget =
       if _root_.scala.util.Properties.isMac then
-        Seq("-H:NativeLinkerOption=-mmacosx-version-min=14.0")
+        Seq("-H:NativeLinkerOption=-mmacosx-version-min=13.0")
       else Seq.empty
   }
 
