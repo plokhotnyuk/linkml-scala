@@ -444,7 +444,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py.indexOf("class Thing(") should be < py.indexOf("class Event(")
     }
 
-    "remove an inherited field that an alias renames, in a way type checkers accept" in {
+    "keep the Python name of an inherited field that an alias renames, and load only the alias" in {
       val py = generate(
         """classes:
           |  Base:
@@ -457,11 +457,11 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |        alias: display_label
           |""".stripMargin,
       )
-      // mypy and pyright don't allow a class variable in place of an inherited field
+      // The field overrides the inherited one, and the old key doesn't load
       py should include(
-        "class Item(Base):\n    label: ClassVar[None] = None  # type: ignore\n" +
-          "    display_label: str | None = None\n",
+        "class Item(Base):\n    label: str | None = Field(None, alias=\"display_label\")\n",
       )
+      py should include("            for key in (\"label\",):\n")
     }
 
     "fail on mixins that Python can't order" in {
