@@ -14,3 +14,7 @@ import { Description, Options, Usage } from '../../../components/converter';
 ## Options
 
 <Options name="graphql" />
+
+## Inherited fields
+
+A type implements the interfaces of its parent classes and mixins, so it has all their fields, with the same types or subtypes of them. A field keeps its parent's type when a `slot_usage` gives it a type with another scalar, such as `uri` for a `uriorcurie` slot, as GraphQL scalars have no subtypes. See [Slots changed by a class](/docs/slot-usage-inheritance/#slots-changed-by-a-class).

@@ -228,6 +228,13 @@ object LinkmlYamlCodec {
     m
   }
 
+  /** Whether the decoded value of a `@required` field is `None` or an empty collection. */
+  def isEmptyValue(value: Any): Boolean = value match {
+    case o: Option[?] => o.isEmpty
+    case i: Iterable[?] => i.isEmpty
+    case _ => false
+  }
+
   def unknownFieldError(
       n: Node,
       kvs: java.util.HashMap[String, Node],
@@ -728,7 +735,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                } else null) match {
                 case null =>
                   ${
-                    if (fieldInfo.defaultValue.isEmpty) {
+                    if (fieldInfo.defaultValue.isEmpty || fieldInfo.required) {
                       if (fieldInfo.kind == FieldKind.Id) {
                         '{
                           if ($id.isEmpty) {
@@ -770,6 +777,17 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                           )
                         }
                         $assign
+                      }
+                    } else if (fieldInfo.required) {
+                      val decoded = Ref(valDef.symbol).asExpr
+                      '{
+                        $assign
+                        if (LinkmlYamlCodec.isEmptyValue($decoded)) {
+                          LinkmlYamlCodec.decodeError(
+                            s"required field '${$mappedName}' of '${$tpeName}'",
+                            $node,
+                          )
+                        }
                       }
                     } else assign
                   }

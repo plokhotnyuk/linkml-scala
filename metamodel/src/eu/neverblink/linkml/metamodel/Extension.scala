@@ -36,7 +36,7 @@ abstract class Extension {
     * @see
     *   From schema: https://w3id.org/linkml/extensions
     */
-  def extensions: Map[String, ExtensionImpl]
+  def extensions: Map[String, Extension]
 
   /** A tag associated with an extension
     *

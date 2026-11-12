@@ -14,3 +14,12 @@ import { Description, Options, Usage } from '../../../components/converter';
 ## Options
 
 <Options name="scala" />
+
+## Inherited fields
+
+A class extends the abstract classes and traits of its parent classes and mixins, which declare its fields as `def`s. A subclass's field overrides them, so it keeps the type of its parents' fields where a `slot_usage` would change it:
+
+- A slot that a class makes required keeps the parent's `Option`, `Seq` or `Map`, with a `@required` annotation. Decoding fails when its value is missing or empty.
+- The `def` of an inlined class gives the class's trait or abstract class, not its case class, so that a subclass can narrow the range to a subclass.
+
+See [Slots changed by a class](/docs/slot-usage-inheritance/#slots-changed-by-a-class).

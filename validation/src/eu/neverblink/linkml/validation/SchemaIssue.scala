@@ -49,7 +49,9 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
   typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),
   typeDesignator.Member(classOf[UnquotedStringDefault], "UnquotedStringDefault"),
+  typeDesignator.Member(classOf[UnrelatedSlotRange], "UnrelatedSlotRange"),
   typeDesignator.Member(classOf[UnwritableUri], "UnwritableUri"),
+  typeDesignator.Member(classOf[WiderSlotCardinality], "WiderSlotCardinality"),
 )
 abstract class SchemaIssue {
 

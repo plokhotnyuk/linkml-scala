@@ -27,7 +27,7 @@ The generator aims for OWL 2 DL. SAREF, SOSA, gist, PROV-O and D3FEND, after a t
 | `prefixes`, `default_prefix`                               | `sh:declare` on the ontology, and `vann:preferredNamespacePrefix` / `vann:preferredNamespaceUri`       |
 | class                                                      | `owl:Class`                                                                                            |
 | `is_a`, `mixins`                                           | `rdfs:subClassOf` the parents                                                                          |
-| a slot of the class (in `slots`, `attributes`, `slot_usage`) | restrictions on the class: `owl:allValuesFrom` the range, cardinalities, `owl:hasValue`, `owl:someValuesFrom` |
+| a slot of the class (in `slots`, `attributes`, `slot_usage`), or an inherited slot that a parent gives another `slot_uri` | restrictions on the class: `owl:allValuesFrom` the range, cardinalities, `owl:hasValue`, `owl:someValuesFrom` |
 | `required`, `minimum_cardinality`, `maximum_cardinality`   | `owl:minCardinality`, `owl:maxCardinality`, or `owl:cardinality` when the two are equal. On a transitive slot, its parents and inverses, which OWL 2 DL allows no counts on, `required` is `owl:someValuesFrom owl:Thing` and the counts are skipped |
 | a single-valued slot                                       | `owl:maxCardinality 1`, and `owl:FunctionalProperty` when it is single-valued everywhere it is used. A `langstring` slot gets `owl:maxQualifiedCardinality 1` on `xsd:string` instead, as a text in several languages is one literal per language |
 | `equals_string`, `equals_number`                           | `owl:hasValue`                                                                                         |
@@ -73,5 +73,6 @@ These differences are in place mostly to make the OWL describe the same RDF data
 - **An abstract class with only one subclass gets no covering axiom.** Consider class B, which is a subclass of an abstract class A. `gen-owl` in this case writes "every A is a B", and since every B is already an A, a reasoner treats the two classes as the same.
 - **A single-valued slot is also marked as an `owl:FunctionalProperty`** when all classes that use this property treat it as single-valued.
 - **An attribute's property gets an `rdfs:range`** when every use of it has the same range.
+- **A `slot_uri` in a `slot_usage` is declared as a property.** The class states all restrictions of the slot on it. The property is an `rdfs:subPropertyOf` the parent's property for the slot, so the class's values also count for the restrictions it inherits. See [Slots changed by a class](/docs/slot-usage-inheritance/#slots-changed-by-a-class).
 - **The announced new defaults are used**: no `owl:minCardinality 0`, which says nothing, and one `owl:cardinality` where the lower and upper bounds are equal.
 - **A `license` that is a link is written as an IRI**.

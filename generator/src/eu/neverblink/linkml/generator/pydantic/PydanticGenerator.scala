@@ -43,13 +43,21 @@ final class PydanticGenerator(using sv: SchemaView)
       else className(cls)
     }
 
+  /** A subclass's field overrides the inherited field only if it has the same Python name. So a
+    * field keeps the name that the JSON key of the topmost classes with the slot gives, and a
+    * `slot_usage` that gives the slot another JSON key with an `alias` changes only the field's
+    * alias. See [[SlotShapes]].
+    */
+  private lazy val slotShapes = new SlotShapes((a, b) => slotName(a) == slotName(b))
+
   /** Field names of a class by JSON key. */
   private def fieldNames(cls: ClassView, ctx: Context): Map[String, String] =
     ctx.fieldNames.getOrElseUpdate(
       cls.name, {
         val names = cls.sortedAttributeViews.map { a =>
           val key = slotName(a.slotView)
-          key -> PydanticRenamer.attribute(key, ctx.moduleNames)
+          val shape = slotShapes.of(cls, a.slotView.name)
+          key -> PydanticRenamer.attribute(slotName(shape), ctx.moduleNames)
         }
         val seen = mutable.HashMap.empty[String, String]
         names.foreach { (key, name) =>
@@ -342,12 +350,50 @@ final class PydanticGenerator(using sv: SchemaView)
       if doc.nonEmpty then sink.append('\n')
       sink.append(s"    model_config = ConfigDict(extra=${pyString(value)})\n")
     }
-    // A field renamed by an alias in a `slot_usage` is written under its new name, but the field
-    // under the old name is still inherited from the parent (LNK-235).
     val attributes = cls.sortedAttributeViews
     if (doc.nonEmpty || extra.isDefined) && attributes.nonEmpty then sink.append('\n')
     attributes.foreach(a => writeField(sink, a, cls, ctx))
-    if doc.isEmpty && extra.isEmpty && attributes.isEmpty then sink.append("    pass\n")
+    val parentKeys =
+      if ctx.options.open || cls.allowsExtraSlots then Vector.empty else renamedKeys(cls)
+    if (parentKeys.nonEmpty) writeParentKeyCheck(sink, parentKeys, ctx)
+    if (doc.isEmpty && extra.isEmpty && attributes.isEmpty) sink.append("    pass\n")
+  }
+
+  /** The JSON keys of the topmost classes with a slot that the class gives another key with an
+    * `alias`, sorted. The class's field keeps the Python name of the parent's field, so pydantic
+    * loads such a key as the field's name. See [[slotShapes]].
+    */
+  private def renamedKeys(cls: ClassView): Vector[String] = {
+    val keys = mutable.HashSet.empty[String]
+    cls.attributeViews.valuesIterator.foreach(a => keys.addOne(slotName(a.slotView)))
+    val renamed = mutable.TreeSet.empty[String]
+    cls.attributeViews.valuesIterator.foreach { a =>
+      val parentKey = slotName(slotShapes.of(cls, a.slotView.name))
+      if (!keys.contains(parentKey)) renamed.addOne(parentKey)
+    }
+    renamed.toVector
+  }
+
+  /** Writes a validator that rejects the given keys, as for any unknown key. Pydantic loads a
+    * field's Python name too, and the `validate_by_name=False` config would only reject it when
+    * loading a `dict`, not JSON.
+    */
+  private def writeParentKeyCheck(sink: CharSink, keys: Vector[String], ctx: Context): Unit = {
+    ctx.imports.typing("Any")
+    ctx.imports.pydantic("model_validator")
+    sink.append(
+      s"""
+         |    @model_validator(mode="before")
+         |    @classmethod
+         |    def _reject_parent_keys(cls, data: Any) -> Any:
+         |        # The JSON keys of the parent classes that this class renames with an alias
+         |        if isinstance(data, dict):
+         |            for key in (${keys.map(k => pyString(k).concat(",")).mkString(" ")}):
+         |                if key in data:
+         |                    raise ValueError(f"Extra inputs are not permitted: {key}")
+         |        return data
+         |""".stripMargin,
+    )
   }
 
   private def writeUnion(sink: CharSink, cls: ClassView, name: String, ctx: Context): Unit = {

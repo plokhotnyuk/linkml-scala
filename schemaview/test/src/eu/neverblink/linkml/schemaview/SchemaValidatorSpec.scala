@@ -15,6 +15,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{
   EmptyName,
   FlankingSeparator,
+  IssueLocation,
   MissingRecommendedSlot,
   NonAsciiName,
   NonStandardSeparator,
@@ -23,7 +24,9 @@ import eu.neverblink.linkml.validation.{
   SchemaFatal,
   UndeclaredCuriePrefix,
   UnquotedStringDefault,
+  UnrelatedSlotRange,
   UnwritableUri,
+  WiderSlotCardinality,
 }
 
 import scala.collection.immutable.VectorMap
@@ -1236,6 +1239,236 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "/types/Code: type_definition 'Code' has no value for the recommended slot 'description'",
         "/subsets/Basic: subset_definition 'Basic' has no value for the recommended slot " +
           "'description'",
+      )
+    }
+
+    "report a class that gives an inherited slot an unrelated range" in {
+      val schemaYaml =
+        """id: https://example.org/vehicles/
+          |name: vehicles
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |  vehicles: https://example.org/vehicles/
+          |default_prefix: vehicles
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Part:
+          |    attributes:
+          |      label:
+          |  CarPart:
+          |    is_a: Part
+          |  Vehicle:
+          |    slots:
+          |      - status
+          |      - code
+          |      - part
+          |      - level
+          |      - handle
+          |      - link
+          |      - amount
+          |  Car:
+          |    tree_root: true
+          |    is_a: Vehicle
+          |    slot_usage:
+          |      status:
+          |        range: Status
+          |      code:
+          |        range: short_code
+          |      part:
+          |        range: CarPart
+          |      level:
+          |        range: integer
+          |      handle:
+          |        range: ncname
+          |      link:
+          |        range: uri
+          |      amount:
+          |        range: integer
+          |slots:
+          |  status:
+          |    range: string
+          |  code:
+          |    range: string
+          |  part:
+          |    range: Part
+          |    inlined: true
+          |  handle:
+          |    range: string
+          |  link:
+          |    range: uriorcurie
+          |  amount:
+          |    range: int_or_string
+          |  level:
+          |    any_of:
+          |      - range: integer
+          |      - range: string
+          |types:
+          |  int_or_string:
+          |    union_of:
+          |      - integer
+          |      - string
+          |  short_code:
+          |    typeof: string
+          |    maximum_length: 4
+          |enums:
+          |  Status:
+          |    permissible_values:
+          |      NEW:
+          |      USED:
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // A subclass, a type with `typeof`, one of the `any_of` ranges, a member of a `union_of`
+      // type, and the built-in types `ncname` for `string` and `uri` for `uriorcurie` narrow it
+      sv.validationProblems.collect { case p: UnrelatedSlotRange => p.infer() } shouldBe Seq(
+        UnrelatedSlotRange(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/vehicles/")),
+            jsonPointer = Some("/classes/Car/slot_usage/status"),
+          ),
+          className = "Car",
+          slotName = "status",
+          slotRange = "'Status'",
+          parentName = "Vehicle",
+          parentRange = "'string'",
+        ).infer(),
+      )
+    }
+
+    "report once an unrelated range that several parents give" in {
+      val schemaYaml =
+        """id: https://example.org/once/
+          |name: once
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: once
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Vehicle:
+          |    slots:
+          |      - status
+          |  Tracked:
+          |    mixin: true
+          |    slots:
+          |      - status
+          |  Car:
+          |    tree_root: true
+          |    is_a: Vehicle
+          |    mixins:
+          |      - Tracked
+          |    slot_usage:
+          |      status:
+          |        range: Status
+          |slots:
+          |  status:
+          |    range: string
+          |enums:
+          |  Status:
+          |    permissible_values:
+          |      NEW:
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+      sv.validationProblems.collect { case p: UnrelatedSlotRange =>
+        (p.className, p.slotName)
+      } shouldBe
+        Seq(("Car", "status"))
+    }
+
+    "report a class that allows more values, or requires fewer values, for an inherited slot" in {
+      val schemaYaml =
+        """id: https://example.org/counts/
+          |name: counts
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: counts
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - label
+          |      - tags
+          |      - codes
+          |      - notes
+          |      - names
+          |      - title
+          |  Child:
+          |    tree_root: true
+          |    is_a: Base
+          |    slot_usage:
+          |      label:
+          |        multivalued: true
+          |      tags:
+          |        maximum_cardinality: 5
+          |      codes:
+          |        minimum_cardinality: 1
+          |      notes:
+          |        exact_cardinality: 2
+          |      names:
+          |        maximum_cardinality: 1
+          |      title:
+          |        required: true
+          |slots:
+          |  label:
+          |    range: string
+          |  tags:
+          |    range: string
+          |    multivalued: true
+          |    maximum_cardinality: 3
+          |  codes:
+          |    range: string
+          |    multivalued: true
+          |    minimum_cardinality: 2
+          |  notes:
+          |    range: string
+          |    multivalued: true
+          |    minimum_cardinality: 1
+          |    maximum_cardinality: 3
+          |  names:
+          |    range: string
+          |    multivalued: true
+          |  title:
+          |    range: string
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // An exact cardinality within the parent's limits, a lower maximum and `required` narrow it
+      sv.validationProblems.collect { case p: WiderSlotCardinality => p.infer() } shouldBe Seq(
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/counts/")),
+            jsonPointer = Some("/classes/Child/slot_usage/codes"),
+          ),
+          className = "Child",
+          slotName = "codes",
+          slotCardinality = "1..*",
+          parentName = "Base",
+          parentCardinality = "2..*",
+        ).infer(),
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/counts/")),
+            jsonPointer = Some("/classes/Child/slot_usage/label"),
+          ),
+          className = "Child",
+          slotName = "label",
+          slotCardinality = "0..*",
+          parentName = "Base",
+          parentCardinality = "0..1",
+        ).infer(),
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/counts/")),
+            jsonPointer = Some("/classes/Child/slot_usage/tags"),
+          ),
+          className = "Child",
+          slotName = "tags",
+          slotCardinality = "0..5",
+          parentName = "Base",
+          parentCardinality = "0..3",
+        ).infer(),
       )
     }
 

@@ -654,6 +654,35 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "keep the parent's Option for a slot that a class makes required, and mark it @required" in {
+      given SchemaView = ModelCatalogue.slotUsage.requiredOverride.model
+
+      val files = ScalaGenerator().generate(splitOptions).toMap
+      files("Base.scala") should include("def title: Option[String]")
+      files("Middle.scala") should include("def title: Option[String]")
+      files("Middle.scala") should include("@required\n    title: Option[String] = None,")
+      files("Leaf.scala") should include("@required\n    title: Option[String] = None,")
+    }
+
+    "give the def of an inlined class its interface, so that a subclass can narrow the range" in {
+      given SchemaView = ModelCatalogue.slotUsage.rangeOverride.model
+
+      val files = ScalaGenerator().generate(splitOptions).toMap
+      files("Vehicle.scala") should include("def part: Option[Part]")
+      files("Vehicle.scala") should include("part: Option[PartImpl] = None,")
+      files("Car.scala") should include("def part: Option[CarPart]")
+      files("Car.scala") should include("part: Option[CarPartImpl] = None,")
+    }
+
+    "use the slot's own Option when mixins make it optional and required" in {
+      given SchemaView = ModelCatalogue.slotUsage.mixinFacets.model
+
+      val files = ScalaGenerator().generate(splitOptions).toMap
+      files("WithRequired.scala") should include("def value: Option[Int]")
+      files("WithRange.scala") should include("def value: Option[Percent]")
+      files("Thing.scala") should include("@required\n    value: Option[Percent] = None,")
+    }
+
     "provide annotations for the 'alias' slot" in {
       val input =
         s"""$schemaShared

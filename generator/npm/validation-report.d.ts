@@ -401,7 +401,9 @@ export type SchemaError =
   | MultipleTreeRoots
   | NonAsciiName
   | NonUniqueName
-  | UndefinedPrefix;
+  | UndefinedPrefix
+  | UnrelatedSlotRange
+  | WiderSlotCardinality;
 
 export type SchemaFatal =
   | CyclicReference
@@ -486,7 +488,9 @@ export type SchemaIssue =
   | UnknownReference
   | UnknownStringReference
   | UnquotedStringDefault
-  | UnwritableUri;
+  | UnrelatedSlotRange
+  | UnwritableUri
+  | WiderSlotCardinality;
 
 /** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel. Where the underlying parser reported a position, it is carried in `location.code_region`. */
 export interface SchemaParseError {
@@ -683,6 +687,33 @@ export interface UnquotedStringDefault {
   value: string;
 }
 
+/** A class gives an inherited slot a range that is not derived from the range of a parent. The LinkML specification only allows a class to narrow an inherited range: to a subclass of it, or to a type with it as a `typeof` ancestor. A member of a `union_of` type, any range in place of `linkml:Any`, `ncname` in place of `string`, and `uri` or `curie` in place of `uriorcurie` narrow it too. */
+export interface UnrelatedSlotRange {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UnrelatedSlotRange";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** parent name */
+  parent_name: string;
+  /** parent range: The ranges that the parent allows, joined with " or ". */
+  parent_range: string;
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
+  severity: IssueSeverity;
+  /** slot name */
+  slot_name: string;
+  /** slot range: The ranges that the class allows, joined with " or ". */
+  slot_range: string;
+}
+
 /** The text before the first colon of a URI value is a prefix declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`, or `http://example.org/a` when the root schema declares `http`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */
 export interface UnwritableUri {
   /** details: Longer, human-readable message describing the issue in more detail. */
@@ -702,6 +733,33 @@ export interface UnwritableUri {
   severity: IssueSeverity;
   /** URI */
   uri: string;
+}
+
+/** A class allows more values, or requires fewer values, for an inherited slot than a parent does, with `required`, `multivalued`, `minimum_cardinality`, `maximum_cardinality` or `exact_cardinality`. A class can only narrow the number of values that a parent allows. */
+export interface WiderSlotCardinality {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "WiderSlotCardinality";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** parent cardinality: The number of values that the parent allows, as `min..max`, with `*` for no maximum. */
+  parent_cardinality: string;
+  /** parent name */
+  parent_name: string;
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
+  severity: IssueSeverity;
+  /** slot cardinality: The number of values that the class allows, as `min..max`, with `*` for no maximum. */
+  slot_cardinality: string;
+  /** slot name */
+  slot_name: string;
 }
 
 /** Issue severity: The severity of an issue found during the validation of a LinkML schema. */

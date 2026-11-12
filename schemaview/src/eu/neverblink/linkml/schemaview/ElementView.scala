@@ -266,7 +266,10 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   /** @return
     *   true if another class in the loaded schemas names this class in its `is_a` or `mixins`
     */
-  def hasDescendants: Boolean = sv.classesWithDescendants.contains(name)
+  def hasDescendants: Boolean = sv.childrenByName.contains(name)
+
+  /** The classes that name this class in their `is_a` or `mixins`, in the common order. */
+  def children: collection.Seq[ClassView] = sv.childrenByName.getOrElse(name, Vector.empty)
 
   /** Whether instances of this class may have data beyond its slots, as set by its `extra_slots`.
     *
@@ -419,6 +422,22 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean =
     attributeNames.contains(slotRef.value)
+
+  /** A slot of this class as its definition gives it, before the `slot_usage` of any class: the
+    * top-level slot, or the attribute in the most distant ancestor that declares it.
+    *
+    * @param name
+    *   Name of the slot
+    * @return
+    *   None if the class doesn't have the slot
+    */
+  def definedSlot(name: String): Option[SlotView] =
+    if (!derivedAttributes.contains(name)) None
+    else if (attributeNames.contains(name)) {
+      var declaring: ClassView = null
+      ancestorsWithSelf.foreach(a => if (a.cls.attributes.contains(name)) declaring = a)
+      new Some(ClassView.derived(declaring.cls.attributes(name), name, None, declaring))
+    } else sv.resolve(Reference[SlotView](name)).mapFast(_.unchangedDerived)
 
   /** The names of the `attributes` of this class and its ancestors.
     *
@@ -636,6 +655,27 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     slot.range.getOrElseFast {
       sv.getDefaultRange(definingSchema)
     }.asInstanceOf[Reference[ElementView[?, ?]]]
+
+  /** Whether each range that this slot allows is a range that `other` allows, or is derived from
+    * one, as [[SchemaView.isDerivedFrom]] tells. Any range is derived from a class with the
+    * `linkml:Any` URI.
+    *
+    * The LinkML spec lets a class change an inherited range only to one derived from it.
+    */
+  def hasRangeDerivedFrom(other: SlotView): Boolean = {
+    val ancestors = other.allowedRanges
+    ancestors.exists(a => sv.classes.get(a).exists(_.isAny)) ||
+    allowedRanges.forall(r => ancestors.exists(sv.isDerivedFrom(r, _)))
+  }
+
+  /** The names of the ranges that the values of this slot may have: those that its `range`, and its
+    * `any_of` and `exactly_one_of` lists, all allow. A `linkml:Any` range allows what the lists
+    * allow.
+    */
+  private[schemaview] def allowedRanges: Seq[String] = {
+    val withOwn = slot.range.exists(r => !sv.classes.get(r.value).exists(_.isAny))
+    AttributeView.rangesOf(slot, withOwn).foldFast(Vector(derivedRange.value))(_.map(_.value))
+  }
 
   /** Get the default value of this slot if the `ifabsent` metaslot is defined.
     *

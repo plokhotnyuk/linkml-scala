@@ -175,4 +175,39 @@ class ClassViewSpec extends AnyWordSpec, Matchers {
       sv.classes("Plain").allowsExtraSlots shouldBe false
     }
   }
+
+  "ClassView.definedSlot" should {
+    val sv = load(
+      """  Base:
+        |    slots:
+        |      - title
+        |    attributes:
+        |      note:
+        |        range: string
+        |  Child:
+        |    is_a: Base
+        |    slot_usage:
+        |      title:
+        |        required: true
+        |      note:
+        |        required: true
+        |slots:
+        |  title:
+        |    range: string
+        |""".stripMargin,
+    )
+    "be the top-level slot, without the slot_usage of any class" in {
+      sv.classes("Child").derivedAttributes("title").slot.required shouldBe true
+      sv.classes("Child").definedSlot("title").get.slot.required shouldBe false
+    }
+    "be the attribute of the class that declares it, without the slot_usage of any class" in {
+      sv.classes("Child").derivedAttributes("note").slot.required shouldBe true
+      val note = sv.classes("Child").definedSlot("note").get
+      note.slot.required shouldBe false
+      note.slot.range.map(_.value) shouldBe Some("string")
+    }
+    "be empty for a slot that the class doesn't have" in {
+      sv.classes("Base").definedSlot("other") shouldBe None
+    }
+  }
 }

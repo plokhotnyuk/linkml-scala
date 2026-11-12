@@ -613,6 +613,89 @@ final class SchemaValidator(using sv: SchemaView) {
     warnings.result()
   }
 
+  /** Report each slot of a class in the root schema that doesn't narrow what a parent gives the
+    * slot: its range is not derived from the parent's range, or it allows more values or requires
+    * fewer values. Each slot gets at most one issue of each kind, with the first such parent.
+    */
+  private lazy val widenedInheritedSlots: Seq[SchemaError] = {
+    val errors = Vector.newBuilder[SchemaError]
+    val schemaId = sv.root.id
+    sv.root.classes.foreachEntry { (className, _) =>
+      val cls = sv.classes(className)
+      val parents = cls.parents
+      if (parents.nonEmpty) {
+        val names = cls.derivedAttributes.keysIterator.toArray
+        java.util.Arrays.sort(names, Ordering.String)
+        names.foreach { name =>
+          val own = cls.derivedAttributes(name)
+          val pointer =
+            if (cls.cls.slotUsage.contains(name)) s"/classes/$className/slot_usage/$name"
+            else if (cls.cls.attributes.contains(name)) s"/classes/$className/attributes/$name"
+            else s"/classes/$className"
+          val rangeParent = parents.iterator.find { p =>
+            val inherited = p.derivedAttributes.getOrElse(name, null)
+            (inherited ne null) && (own ne inherited) && !own.hasRangeDerivedFrom(inherited)
+          }.orNullFast
+          if (rangeParent ne null) {
+            errors.addOne(
+              new UnrelatedSlotRange(
+                location = at(pointer, schemaId),
+                className = className,
+                slotName = name,
+                slotRange = rangeNames(own),
+                parentName = rangeParent.name,
+                parentRange = rangeNames(rangeParent.derivedAttributes(name)),
+              ),
+            )
+          }
+          val ownMin = minValues(own.slot)
+          val ownMax = maxValues(own.slot)
+          val cardinalityParent = parents.iterator.find { p =>
+            val inherited = p.derivedAttributes.getOrElse(name, null)
+            (inherited ne null) && (own ne inherited) &&
+            (ownMin < minValues(inherited.slot) || ownMax > maxValues(inherited.slot))
+          }.orNullFast
+          if (cardinalityParent ne null) {
+            errors.addOne(
+              new WiderSlotCardinality(
+                location = at(pointer, schemaId),
+                className = className,
+                slotName = name,
+                slotCardinality = cardinality(own.slot),
+                parentName = cardinalityParent.name,
+                parentCardinality = cardinality(cardinalityParent.derivedAttributes(name).slot),
+              ),
+            )
+          }
+        }
+      }
+    }
+    errors.result()
+  }
+
+  /** The least number of values that the slot allows. */
+  private def minValues(slot: SlotDefinition): Int = {
+    val min = if (slot.multivalued) {
+      slot.minimumCardinality.orElseFast(slot.exactCardinality).getOrElseFast(0)
+    } else 0
+    if (slot.required) Math.max(min, 1) else min
+  }
+
+  /** The greatest number of values that the slot allows, or `Int.MaxValue` for no limit. */
+  private def maxValues(slot: SlotDefinition): Int =
+    if (slot.multivalued) {
+      slot.maximumCardinality.orElseFast(slot.exactCardinality).getOrElseFast(Int.MaxValue)
+    } else 1
+
+  /** The number of values that the slot allows, as `min..max`, with `*` for no limit. */
+  private def cardinality(slot: SlotDefinition): String = {
+    val max = maxValues(slot)
+    s"${minValues(slot)}..${if (max == Int.MaxValue) "*" else max.toString}"
+  }
+
+  private def rangeNames(slot: SlotView): String =
+    slot.allowedRanges.mkString("'", "' or '", "'")
+
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
     UndefinedPrefix(location = at(position, schemaId), prefix = prefix)
 
@@ -785,6 +868,7 @@ final class SchemaValidator(using sv: SchemaView) {
       nonUniqueNames ++
       unknownPrefixes ++
       invalidEqualsStrings ++
+      widenedInheritedSlots ++
       namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */

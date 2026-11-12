@@ -225,6 +225,51 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "keep the parent's field type where a slot_usage gives a type with another scalar" in {
+      given SchemaView = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/usage/
+            |name: usage
+            |default_prefix: https://example.org/usage/
+            |imports:
+            |  - linkml:types
+            |classes:
+            |  Part: {}
+            |  CarPart:
+            |    is_a: Part
+            |  Base:
+            |    slots:
+            |      - link
+            |      - part
+            |  Child:
+            |    is_a: Base
+            |    slot_usage:
+            |      link:
+            |        range: uri
+            |        required: true
+            |      part:
+            |        range: CarPart
+            |slots:
+            |  link:
+            |    range: uriorcurie
+            |  part:
+            |    range: Part
+            |""".stripMargin,
+        ),
+      )
+
+      val definitions = GraphQlGenerator().serialize().split("\n\n")
+      def definition(start: String): String = definitions.find(_.contains(start)).get
+      val base = definition("interface BaseInterface")
+      base should include("link: Uriorcurie\n")
+      base should include("part: PartInterface\n")
+      // `Uri` is not a subtype of `Uriorcurie`, but `!` gives one. `CarPart` implements
+      // `PartInterface`.
+      val child = definition("type Child")
+      child should include("link: Uriorcurie!\n")
+      child should include("part: CarPart\n")
+    }
+
     "prune unused linkml:types elements by default" in {
       given SchemaView = ModelCatalogue.reference.model
 

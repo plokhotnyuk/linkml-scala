@@ -23,6 +23,14 @@ import scala.annotation.meta.field
   */
 @field final class serializeDefault extends StaticAnnotation
 
+/** Marks an `Option`, `Seq` or `Map` field that must have a value, although its type allows none.
+  * Decoding fails when the value is missing, `None` or empty.
+  *
+  * Used for a slot that a class makes required with `slot_usage`. The field keeps the type of the
+  * parent's field, so that it can override the parent's `def`.
+  */
+@field final class required extends StaticAnnotation
+
 /** Marks a class with exactly one field that is serialized as the value of that field, instead of
   * as an object holding it. For example, `Uri("http://x")` is written as `"http://x"` rather than
   * `{original: "http://x"}`.

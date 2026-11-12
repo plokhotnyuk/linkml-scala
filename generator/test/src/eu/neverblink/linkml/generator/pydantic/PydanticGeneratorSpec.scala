@@ -444,6 +444,26 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py.indexOf("class Thing(") should be < py.indexOf("class Event(")
     }
 
+    "keep the Python name of an inherited field that an alias renames, and load only the alias" in {
+      val py = generate(
+        """classes:
+          |  Base:
+          |    attributes:
+          |      label: {range: string}
+          |  Item:
+          |    is_a: Base
+          |    slot_usage:
+          |      label:
+          |        alias: display_label
+          |""".stripMargin,
+      )
+      // The field overrides the inherited one, and the old key doesn't load
+      py should include(
+        "class Item(Base):\n    label: str | None = Field(None, alias=\"display_label\")\n",
+      )
+      py should include("            for key in (\"label\",):\n")
+    }
+
     "fail on mixins that Python can't order" in {
       val ex = intercept[IllegalArgumentException] {
         generate(

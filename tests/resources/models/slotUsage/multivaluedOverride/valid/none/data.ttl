@@ -1,4 +1,0 @@
-@prefix : <https://neverblink.eu/linkml/tests/multivaluedOverride/> .
-
-_:b a :Child;
-    :note "some note" .
