@@ -23,17 +23,54 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
     Schema.buildFromAst(doc)
   }
 
-  /** Checks that each type and interface has all fields of the interfaces it implements, as GraphQL
-    * requires. Sangria adds a missing field from the interface, so it doesn't report it.
+  /** Checks that each type and interface has all fields of the interfaces it implements, with the
+    * same type or a subtype of it, as GraphQL requires. Sangria adds a missing field from the
+    * interface, so it doesn't report it.
     */
   private def checkInterfaceFields(doc: ast.Document): Unit = {
     val interfaceFields = doc.definitions.collect { case i: ast.InterfaceTypeDefinition =>
-      i.name -> i.fields.map(_.name).toSet
+      i.name -> i.fields
     }.toMap
+    val implemented = doc.definitions.collect {
+      case o: ast.ObjectTypeDefinition => o.name -> o.interfaces.map(_.name)
+      case i: ast.InterfaceTypeDefinition => i.name -> i.interfaces.map(_.name)
+    }.toMap
+    def implements(name: String, interface: String): Boolean =
+      name == interface || implemented.getOrElse(name, Nil).exists(implements(_, interface))
+    // A subtype adds `!`, or is a type that implements the interface's type
+    def isSubtype(tpe: ast.Type, of: ast.Type): Boolean = tpe match {
+      case t: ast.NotNullType =>
+        of match {
+          case o: ast.NotNullType => isSubtype(t.ofType, o.ofType)
+          case _ => isSubtype(t.ofType, of)
+        }
+      case t: ast.ListType =>
+        of match {
+          case o: ast.ListType => isSubtype(t.ofType, o.ofType)
+          case _ => false
+        }
+      case t: ast.NamedType =>
+        of match {
+          case o: ast.NamedType => implements(t.name, o.name)
+          case _ => false
+        }
+    }
+    def show(tpe: ast.Type): String = tpe match {
+      case t: ast.NotNullType => show(t.ofType).concat("!")
+      case t: ast.ListType => s"[${show(t.ofType)}]"
+      case t: ast.NamedType => t.name
+    }
     def check(name: String, interfaces: Seq[ast.NamedType], fields: Seq[ast.FieldDefinition]) =
       interfaces.foreach { i =>
-        val missing = interfaceFields.getOrElse(i.name, Set.empty) -- fields.map(_.name)
-        withClue(s"$name misses fields of ${i.name}: ")(missing shouldBe empty)
+        interfaceFields.getOrElse(i.name, Vector.empty).foreach { inherited =>
+          withClue(s"$name.${inherited.name} of ${i.name}: ") {
+            val field = fields.find(_.name == inherited.name)
+            field.map(_.name) shouldBe Some(inherited.name)
+            withClue(s"${show(field.get.fieldType)} of ${show(inherited.fieldType)}: ") {
+              isSubtype(field.get.fieldType, inherited.fieldType) shouldBe true
+            }
+          }
+        }
       }
     doc.definitions.foreach {
       case o: ast.ObjectTypeDefinition => check(o.name, o.interfaces, o.fields)
@@ -57,7 +94,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
         )
       }
 
-    "give an implementation the stub field of an interface whose fields a descendant changes" in {
+    "give an implementation the stub field of an interface without fields" in {
       val sv = SchemaIssues.orThrow(
         SchemaView.loadSchemaViewFromString(
           """id: https://example.org/stub/
@@ -68,15 +105,6 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
             |imports:
             |  - linkml:types
             |classes:
-            |  Base:
-            |    slots:
-            |      - labels
-            |  Child:
-            |    tree_root: true
-            |    is_a: Base
-            |    slot_usage:
-            |      labels:
-            |        alias: tags
             |  Empty:
             |    abstract: true
             |  Filled:
@@ -90,7 +118,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
         ),
       )
       val result = parseOrThrow(dummyQuery + GraphQlGenerator(using sv).serialize())
-      result.typeList.map(_.name) should contain allOf ("Base", "Child", "Filled")
+      result.typeList.map(_.name) should contain("Filled")
     }
 
     "generate the metamodel" in {

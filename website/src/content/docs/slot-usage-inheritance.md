@@ -125,7 +125,6 @@ Then a parent doesn't describe the slot, and its descendants describe their own 
 
 | Generator | When a descendant changes the slot's | Then |
 |-----------|--------------------------------------|------|
-| GraphQL   | name (`alias`), or range to a type with another GraphQL type | The interface leaves out the field. Each type still has it. |
 | OWL       | `slot_uri` | The subclass declares the new property, and states all restrictions of the slot on it, including those from the `slot_usage` of its parents. |
 | Pydantic  | JSON key (`alias`) | The subclass removes the inherited field, so loading rejects the old key. |
 

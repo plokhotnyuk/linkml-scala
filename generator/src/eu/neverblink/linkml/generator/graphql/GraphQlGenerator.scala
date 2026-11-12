@@ -72,40 +72,53 @@ class GraphQlGenerator(using sv: SchemaView)
     classDefs ++ anyDef ++ enumDefs ++ typeDefs
   }
 
-  /** The type of a field, without the list and non-null marks. */
-  private def fieldRange(av: AttributeView): String =
-    av match {
-      case _: AnyView => "Any"
-      case cav: ClassAttributeView => getInterfaceName(cav.classView)
-      case tav: TypeAttributeView => remappedType(tav.typeView)
-      case eav: EnumAttributeView => enumName(eav.enumView)
+  /** The GraphQL type of a slot's range, without the list and non-null marks. */
+  private def rangeOf(slot: SlotView): String =
+    slot.derivedRange.resolve.get match {
+      case cv: ClassView => if cv.isAny then "Any" else getInterfaceName(cv)
+      case tv: TypeView => remappedType(tv)
+      case ev: EnumView => enumName(ev)
+      case x => throw RuntimeException(s"Invalid range: ${slot.name} -> ${x.name}")
     }
 
-  /** A class that implements an interface must have each of its fields, with the same name and the
-    * same type or a subtype of it. A field is a subtype when it adds `!`, or when its type is an
-    * object or interface that implements the interface's type. `validate` reports a class that
-    * widens the range or cardinality of a slot as an error, so this checks only the name and that a
-    * class range stays a class.
+  /** Whether the range of the slot is a class other than `linkml:Any`. */
+  private def hasClassRange(slot: SlotView): Boolean =
+    slot.derivedRange.resolve.get match {
+      case cv: ClassView => !cv.isAny
+      case _ => false
+    }
+
+  /** A class that implements an interface must have each of its fields, with the same type or a
+    * subtype of it. So a field can't take a range from a `slot_usage` that isn't a subtype of the
+    * range of the topmost classes with the slot. See [[SlotShapes]].
     */
-  private lazy val sharedFields = new SharedSlots((ancestor, descendant) =>
-    slotName(ancestor.slotView) == slotName(descendant.slotView) && (
-      fieldRange(ancestor) == fieldRange(descendant) || ancestor.isInstanceOf[ClassAttributeView] &&
-        descendant.isInstanceOf[ClassAttributeView]
-    ),
-  )
+  private lazy val slotShapes = new SlotShapes((a, b) => rangeOf(a) == rangeOf(b))
+
+  /** The field of an attribute of a class. It has the class's own range if it is a subtype of the
+    * range of the version of the slot that [[slotShapes]] gives, and that version's range
+    * otherwise, such as for a type with another scalar. A subtype is the same type, or a class that
+    * implements the interface of the range, which a subclass does. `validate` reports a range that
+    * is not derived from the parent's as an error.
+    */
+  private def fieldOf(cls: ClassView, av: AttributeView)(using
+      GraphQlGeneratorOptions,
+  ): GraphQlField = {
+    val shape = slotShapes.of(cls, av.slotView.name)
+    val own = rangeOf(av.slotView)
+    val range =
+      if (own == rangeOf(shape) || hasClassRange(av.slotView) && hasClassRange(shape)) own
+      else rangeOf(shape)
+    GraphQlField(av, range)
+  }
 
   /** Generate a GraphQL definition corresponding to the provided class, or None if the class is
     * linkml:Any.
     *
-    * The interface of a class leaves out the fields that a descendant changes in a way that does
-    * not give a subtype, such as a field that a `slot_usage` renames with an alias. Each class
-    * still has all its fields.
+    * The fields of a class keep the names and types of its parents' fields where a `slot_usage`
+    * would change them in a way that does not give a subtype. See [[fieldOf]].
     */
   def generateClass(cls: ClassView)(using GraphQlGeneratorOptions): Iterable[GraphQlDefinition] = {
-    lazy val fields =
-      cls.attributeViews.values.map(av => GraphQlField(av, fieldRange(av)))
-    lazy val interfaceFields =
-      fields.filter(f => sharedFields.isShared(cls, f.attributeView.slotView.name))
+    lazy val fields = cls.attributeViews.values.map(av => fieldOf(cls, av))
     // A class must have the `_` field of each interface it implements that has only that field
     lazy val parentStub = cls.ancestorsWithSelf.iterator.drop(1).exists(hasStubInterface)
     if cls.isAny then Seq.empty
@@ -113,7 +126,7 @@ class GraphQlGenerator(using sv: SchemaView)
       Seq(
         GraphQlInterfaceDefinition(
           cls,
-          interfaceFields,
+          fields,
           cls.parents.map(getInterfaceName),
           stub = parentStub,
         ),
@@ -122,7 +135,7 @@ class GraphQlGenerator(using sv: SchemaView)
       Seq(
         GraphQlInterfaceDefinition(
           cls,
-          interfaceFields,
+          fields,
           cls.parents.map(getInterfaceName),
           Some(splitInterfaceName(cls)),
           parentStub,
@@ -145,12 +158,11 @@ class GraphQlGenerator(using sv: SchemaView)
       )
   }
 
-  /** Whether the class has an interface without fields of its own. GraphQL requires an interface to
-    * have a field, so it gets the stub field `_`, which its implementations must have too.
+  /** Whether the class has an interface without fields. GraphQL requires an interface to have a
+    * field, so it gets the stub field `_`, which its implementations must have too.
     */
   private def hasStubInterface(cls: ClassView): Boolean =
-    !cls.isAny && (!cls.isConcrete || isSplit(cls)) &&
-      cls.derivedAttributes.keysIterator.forall(name => !sharedFields.isShared(cls, name))
+    !cls.isAny && (!cls.isConcrete || isSplit(cls)) && cls.derivedAttributes.isEmpty
 
   /** Get the interface name for a class' interface, if it has an interface/implementation split.
     * Otherwise, gets the class' GraphQL name.
@@ -369,7 +381,12 @@ case class GraphQlAnyScalarDefinition()(using GraphQlGeneratorOptions) extends G
             |""".stripMargin
   }
 
-/** Container for information needed to generate a graphql field definition
+/** A field of a GraphQL type or interface.
+  *
+  * @param attributeView
+  *   The slot of the class
+  * @param range
+  *   The type of the field, without the list and non-null marks
   */
 case class GraphQlField(
     attributeView: AttributeView,
