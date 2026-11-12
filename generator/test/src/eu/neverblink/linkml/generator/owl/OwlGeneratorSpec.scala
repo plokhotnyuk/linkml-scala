@@ -108,6 +108,31 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms.collect { case SubClassOf(_, Cardinality(Bound.Min, 0, _, _), _) => () } shouldBe empty
     }
 
+    "make a slot_uri that a slot_usage sets a subproperty of the parent's property" in {
+      val axioms = ontologyOf("""
+        |classes:
+        |  Base:
+        |    slots:
+        |      - label
+        |  Item:
+        |    is_a: Base
+        |    slot_usage:
+        |      label:
+        |        slot_uri: https://example.org/alt/newLabel
+        |  Alone:
+        |    attributes:
+        |      note:
+        |        slot_uri: https://example.org/alt/note
+        |slots:
+        |  label:
+        |    range: string
+        |    required: true
+        |""").axioms
+      // Item's values of the new property count as values of `label`, which Base requires
+      axioms should contain(SubPropertyOf("https://example.org/alt/newLabel", ns + "label"))
+      axioms.collect { case s: SubPropertyOf => s } should have size 1
+    }
+
     "state an attribute's domain only when every use of its property has one" in {
       val schema = """
         |classes:

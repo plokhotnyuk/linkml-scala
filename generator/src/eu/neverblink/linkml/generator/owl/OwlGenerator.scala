@@ -994,7 +994,28 @@ object OwlGenerator {
     private def addClassProperties(cv: ClassView): Unit = {
       cv.cls.attributes.foreachEntry((name, attribute) => addClassProperty(cv, name, attribute))
       cv.cls.slotUsage.foreachEntry { (name, usage) =>
-        if (usage.slotUri.isDefined) addClassProperty(cv, name, null)
+        if (usage.slotUri.isDefined) {
+          addClassProperty(cv, name, null)
+          addParentProperties(cv, name)
+        }
+      }
+    }
+
+    /** Makes the property that a `slot_usage` of the class sets with `slot_uri` a subproperty of
+      * the properties that its parents use for the slot. A subclass inherits the restrictions of
+      * its parents, so its values must count as values of their properties too. A property of
+      * another kind, such as a data property for an object property, can't be a subproperty.
+      */
+    private def addParentProperties(cv: ClassView, name: String): Unit = {
+      val derived = cv.derivedAttributes.getOrElse(name, null)
+      if (derived ne null) {
+        cv.parents.foreach { p =>
+          val inherited = p.derivedAttributes.getOrElse(name, null)
+          if (
+            (inherited ne null) && inherited.uriStr != derived.uriStr &&
+            kindOf(inherited) == kindOf(derived)
+          ) add(SubPropertyOf(derived.uriStr, inherited.uriStr))
+        }
       }
     }
 

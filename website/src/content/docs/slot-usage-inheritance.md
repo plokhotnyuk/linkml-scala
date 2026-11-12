@@ -125,6 +125,6 @@ Then a parent doesn't describe the slot, and its descendants describe their own 
 
 | Generator | When a descendant changes the slot's | Then |
 |-----------|--------------------------------------|------|
-| OWL       | `slot_uri` | The subclass declares the new property, and states all restrictions of the slot on it, including those from the `slot_usage` of its parents. |
+| OWL       | `slot_uri` | The subclass declares the new property as an `rdfs:subPropertyOf` the parent's, and states all restrictions of the slot on it, including those from the `slot_usage` of its parents. |
 
 See [Narrowing inherited ranges](/docs/implementation-differences/#narrowing-inherited-ranges).
