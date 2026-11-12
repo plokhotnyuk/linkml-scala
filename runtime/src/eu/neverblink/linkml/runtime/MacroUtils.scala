@@ -99,6 +99,8 @@ trait MacroUtils(using val quotes: Quotes) {
     *   The structural role of this field in LinkML mappings (e.g., ID, Value, Dictionary).
     * @param serializeDefault
     *   Whether the default value must be serialized instead of omitted (`@serializeDefault`).
+    * @param required
+    *   Whether the field must have a value, although its type allows none (`@required`).
     */
   class FieldInfo(
       val symbol: Symbol,
@@ -108,6 +110,7 @@ trait MacroUtils(using val quotes: Quotes) {
       val resolvedTpe: TypeRepr,
       val kind: FieldKind,
       val serializeDefault: Boolean,
+      val required: Boolean,
   )
 
   /** Defines the specific mapping behavior or structural role a field has within a LinkML schema.
@@ -341,6 +344,7 @@ trait MacroUtils(using val quotes: Quotes) {
             var named: Option[Term] = None
             var kind: FieldKind = FieldKind.Regular
             var serializeDefault = false
+            var required = false
             getterOrField.annotations.foreach { annotation =>
               val aTpe = annotation.tpe
               if (aTpe =:= namedTpe) {
@@ -354,6 +358,8 @@ trait MacroUtils(using val quotes: Quotes) {
                   )
                 }
                 serializeDefault = true
+              } else if (aTpe =:= requiredTpe) {
+                required = true
               } else {
                 if (kind != FieldKind.Regular) {
                   fail(
@@ -378,6 +384,7 @@ trait MacroUtils(using val quotes: Quotes) {
               fieldTpe,
               kind,
               serializeDefault,
+              required,
             )
         }
 
@@ -676,6 +683,7 @@ trait MacroUtils(using val quotes: Quotes) {
     Symbol.requiredClass("eu.neverblink.linkml.runtime.expandedDict").typeRef
   private val serializeDefaultTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.serializeDefault").typeRef
+  private val requiredTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.required").typeRef
   private val flattenTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.flatten").typeRef
   private val extraSlotsAllowedTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.extraSlotsAllowed").typeRef

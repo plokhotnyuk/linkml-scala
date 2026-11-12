@@ -558,6 +558,33 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         MyClass(),
       )
     }
+    "reject missing, null or empty values of fields annotated with @required" in {
+      case class MyClass(
+          @required a: Option[String] = None,
+          @required b: Seq[Int] = Nil,
+          c: Option[String] = None,
+      ) derives LinkmlYamlCodec
+
+      roundTrip(MyClass(Some("x"), Seq(1)), "a: x\nb:\n  - 1\n")
+      decodeError[MyClass](
+        "b:\n  - 1\n",
+        """Expected required field 'a' of 'MyClass' at 0:0 but got:
+          |b:
+          |^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "a: null\nb:\n  - 1\n",
+        """Expected required field 'a' of 'MyClass' at 1:0 but got:
+          |b:
+          |^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "a: x\nb: []\n",
+        """Expected required field 'b' of 'MyClass' at 1:0 but got:
+          |b: []
+          |^""".stripMargin,
+      )
+    }
     "not use the compact form for classes with a @serializeDefault field" in {
       case class DictEntry(
           @id k: String,
