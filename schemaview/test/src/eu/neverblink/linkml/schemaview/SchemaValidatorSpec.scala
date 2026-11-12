@@ -1376,7 +1376,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         Seq(("Car", "status"))
     }
 
-    "report a class that allows more or fewer values for an inherited slot" in {
+    "report a class that allows more values, or requires fewer values, for an inherited slot" in {
       val schemaYaml =
         """id: https://example.org/counts/
           |name: counts

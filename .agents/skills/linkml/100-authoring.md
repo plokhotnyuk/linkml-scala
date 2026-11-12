@@ -42,8 +42,8 @@ classes:
 
 `slot_usage` may only **narrow**. Widening a range or making a required slot optional is a
 modelling error. `validate` reports an error with `UnrelatedSlotRange` for a range that is not
-derived from the inherited one, and with `WiderSlotCardinality` for a slot that allows more or fewer
-values than the inherited one. It warns with `InvalidSlotUsage` if you name a slot the class does
+derived from the inherited one, and with `WiderSlotCardinality` for a slot that allows more values,
+or requires fewer values, than the inherited one. It warns with `InvalidSlotUsage` if you name a slot the class does
 not actually have. `required: false` or `multivalued: false` on a slot that is already `true` is ignored without
 a warning (see
 [210-slot-usage-inheritance.md](210-slot-usage-inheritance.md#boolean-metaslots)). To see the result of all this resolution, run

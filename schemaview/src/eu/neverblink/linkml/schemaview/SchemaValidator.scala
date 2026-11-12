@@ -614,8 +614,8 @@ final class SchemaValidator(using sv: SchemaView) {
   }
 
   /** Report each slot of a class in the root schema that doesn't narrow what a parent gives the
-    * slot: its range is not derived from the parent's range, or it allows more or fewer values.
-    * Each slot gets at most one issue of each kind, with the first such parent.
+    * slot: its range is not derived from the parent's range, or it allows more values or requires
+    * fewer values. Each slot gets at most one issue of each kind, with the first such parent.
     */
   private lazy val widenedInheritedSlots: Seq[SchemaError] = {
     val errors = Vector.newBuilder[SchemaError]

@@ -70,7 +70,7 @@ See [Boolean metaslots](210-slot-usage-inheritance.md#boolean-metaslots) for det
 The LinkML specification only lets a class narrow the range of an inherited slot: to a subclass of it, or to a type with it as a `typeof` ancestor.
 ohi LinkML also accepts a member of a `union_of` type, and the built-in types that hold only values of another one: `ncname` for `string`, and `uri` or `curie` for `uriorcurie`. The LinkML metamodel itself narrows `string` to `ncname` this way.
 `validate` reports an error with `UnrelatedSlotRange` for any other range, such as an enum in place of `string`.
-It also reports an error with `WiderSlotCardinality` for a class that allows more or fewer values than a parent, such as with `multivalued: true` on a single-valued slot.
+It also reports an error with `WiderSlotCardinality` for a class that allows more values, or requires fewer values, than a parent, such as with `multivalued: true` on a single-valued slot.
 LinkML-Python 1.12.1 accepts both without a warning.
 
 See [Slots changed by a class](210-slot-usage-inheritance.md#slots-changed-by-a-class).

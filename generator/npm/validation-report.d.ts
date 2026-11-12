@@ -735,7 +735,7 @@ export interface UnwritableUri {
   uri: string;
 }
 
-/** A class allows more or fewer values for an inherited slot than a parent does, with `multivalued`, `minimum_cardinality`, `maximum_cardinality` or `exact_cardinality`. A class can only narrow the number of values that a parent allows. */
+/** A class allows more values, or requires fewer values, for an inherited slot than a parent does, with `required`, `multivalued`, `minimum_cardinality`, `maximum_cardinality` or `exact_cardinality`. A class can only narrow the number of values that a parent allows. */
 export interface WiderSlotCardinality {
   /** class name: Name of the class the issue was found in. */
   class_name: string;

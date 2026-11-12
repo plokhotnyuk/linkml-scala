@@ -115,16 +115,23 @@ The JSON Schema, Pydantic and Java generators do not support boolean expressions
 A class can only narrow an inherited slot. `validate` reports an error for a class that gives an inherited slot:
 
 - a range that is not derived from the parent's range (`UnrelatedSlotRange`)
-- a cardinality that allows more or fewer values than the parent's, for example `multivalued: true` on a single-valued slot (`WiderSlotCardinality`)
+- a cardinality that allows more values, or requires fewer values, than the parent's, for example `multivalued: true` on a single-valued slot (`WiderSlotCardinality`)
 
 The generators don't support such schemas, so their output may not work.
 
-Some outputs pass what a parent class says about a field down to its subclasses: GraphQL interfaces, Scala abstract classes and traits, OWL class restrictions, and Pydantic classes.
-Some valid changes can't be passed down this way.
-Then a parent doesn't describe the slot, and its descendants describe their own versions:
+Some outputs pass what a parent class says about a field down to its subclasses: GraphQL interfaces, Scala abstract classes and traits, Pydantic classes, and OWL class restrictions.
+A parent always describes its slots.
+Some valid changes can't be passed down this way, so a subclass's field keeps what its parents say instead:
 
-| Generator | When a descendant changes the slot's | Then |
-|-----------|--------------------------------------|------|
+| Generator | When a class changes the slot's | Then |
+|-----------|---------------------------------|------|
+| Scala     | number of values, for example with `required` | The field keeps the parent's `Option`, `Seq` or `Map`, as for other changes of the number of values. A required slot gets `@required`, so decoding fails without a value. |
+| Scala     | range to a subclass | The parent's `def` gives the trait or abstract class of the range, which the subclass's field narrows. |
+| GraphQL   | range to a type with another scalar, such as `uri` for `uriorcurie` | The field keeps the parent's type. |
+| Pydantic  | JSON key (`alias`) | The field keeps the parent's Python name, with the new key as its alias. Loading rejects the old key. |
 | OWL       | `slot_uri` | The subclass declares the new property as an `rdfs:subPropertyOf` the parent's, and states all restrictions of the slot on it, including those from the `slot_usage` of its parents. |
+
+A field follows the topmost classes that have the slot.
+When they don't agree, such as two mixins of a class where one makes the slot required, the field follows the slot as its definition gives it, before any `slot_usage`.
 
 See [Narrowing inherited ranges](200-limitations.md#narrowing-inherited-ranges).
