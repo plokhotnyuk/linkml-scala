@@ -1301,7 +1301,7 @@
       "kind": "generator",
       "page": "generators/scala",
       "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=scala",
-      "description": "Generate Scala classes, one file per class, enum and type.",
+      "description": "Generate Scala classes, one file per class, enum and type, and one for the type of a whole document when the tree root has a `tree_root_as` other than `plain`.",
       "snippets": [
         {
           "sdk": "Cli",

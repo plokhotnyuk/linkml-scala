@@ -10,6 +10,7 @@ import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
 import java.lang
+import scala.collection.mutable
 
 final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   import ScalaGenerator.*
@@ -75,7 +76,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       }
     } else None
 
-  /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums.
+  /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums, and the
+    * type of a whole document when the tree root has a `tree_root_as` other than `plain`.
     * @param options
     *   What to generate. See [[ScalaGeneratorOptions]].
     * @return
@@ -85,10 +87,63 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       options: ScalaGeneratorOptions = ScalaGeneratorOptions(),
   ): Iterable[(String, String)] = {
     val header = GeneratedHeader("//") + "\n"
-    (generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
-      ++ generateFunctions(options)
-      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`) else None))
-      .map((file, code) => file -> header.concat(code))
+    val files = Vector.newBuilder[(String, String)]
+    val fileNames = mutable.HashSet.empty[String]
+    def add(file: (String, String)): Unit = {
+      fileNames.addOne(file._1.toLowerCase)
+      files.addOne((file._1, header.concat(file._2)))
+    }
+    generateClasses(options).foreach(add)
+    generateEnums(options).foreach(add)
+    generateTypeDefinitions(options).foreach(add)
+    generateFunctions(options).foreachFast(add)
+    if (options.generateEmitPrefixes) generateEmitPrefixes(options.`package`).foreachFast(add)
+    val root = sv.treeRoot.orNullFast
+    if (root ne null) {
+      // A name that another file already has gets underscores at the end until it is free. Names
+      // are compared ignoring case, as macOS and Windows compare file names.
+      var name = documentTypeName(sv)
+      while (fileNames.contains(name.toLowerCase.concat(".scala"))) name = name.concat("_")
+      val document = generateDocument(root, name, options)
+      if (document ne null) files.addOne((name.concat(".scala"), header.concat(document)))
+    }
+    files.result()
+  }
+
+  /** Generates the file with the type of a whole document: an `Option`, `Seq` or `Map` of the class
+    * that holds the tree root's instances. `LinkmlYamlCodec.derived` reads and writes it.
+    *
+    * @param name
+    *   the name of the document type
+    * @return
+    *   the content of the file, or null if `tree_root_as` is `plain`, if the tree root is
+    *   `linkml:Any` (no class is generated for it), or if it is abstract or a mixin and has no type
+    *   designator whose values name classes
+    */
+  private def generateDocument(
+      root: ClassView,
+      name: String,
+      options: ScalaGeneratorOptions,
+  ): String = {
+    // Read `tree_root_as` first, so that a bad value is an error for an abstract tree root too
+    val inlineType = root.treeRootInlineType(None)
+    val collection = inlineType match {
+      case _: InlineType.plain.type => return null
+      case _: InlineType.optional.type => "Option["
+      case _: InlineType.list.type => "Seq["
+      case _ => "Map[String, "
+    }
+    // The codec can read the interface only if it has `@typeDesignator`
+    val element =
+      if (root.isAny) return null
+      else if (typeDesignatorAnnotation(root, options).isDefined) className(root)
+      else if (root.isConcrete) implName(root, options)
+      else return null
+    val sb = new java.lang.StringBuilder(128)
+    sb.append("package ").append(options.`package`).append("\n\n/** ")
+      .append(TreeRootDocument.description(root, inlineType)).append(" */\ntype ")
+      .append(name).append(" = ").append(collection)
+      .append(element).append("]\n").toString
   }
 
   /** Generate Scala counterparts of LinkML classes: case class implementations for instantiable

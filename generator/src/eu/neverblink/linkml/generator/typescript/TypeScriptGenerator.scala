@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.typescript
 
 import eu.neverblink.linkml.generator.options.{TypeScriptErrorHandling, TypeScriptGeneratorOptions}
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning, TreeRootDocument}
 import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.rdf.io.CharSink
@@ -71,6 +71,28 @@ final class TypeScriptGenerator(using sv: SchemaView)
         val valueType = propertyType(cls.attributeViews(value), cls, ctx)
         s"Record<string, $valueType | ${keyOptional(ref, cls, key)}>"
     }
+  }
+
+  /** Writes the type of a whole document: the tree root or null, a list of it, or a dict of it by
+    * key.
+    */
+  private def writeDocument(
+      sink: CharSink,
+      root: ClassView,
+      inlineType: InlineType,
+      ctx: Context,
+  ): Unit = {
+    writeDoc(sink, Seq(TreeRootDocument.description(root, inlineType)), "")
+    sink.append("export type ")
+    sink.append(documentTypeName(sv))
+    sink.append(" = ")
+    inlineType match {
+      case _: InlineType.optional.type =>
+        sink.append(classRef(root))
+        sink.append(" | null")
+      case _ => sink.append(inlinedType(root, inlineType, ctx))
+    }
+    sink.append(";\n")
   }
 
   private def keyOptional(ref: String, cls: ClassView, key: String): String =
@@ -285,6 +307,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def checkNames(
       classes: Seq[ClassView],
       enums: Seq[EnumView],
+      document: ClassView,
       hasFunctions: Boolean,
       usesResult: Boolean,
   ): Unit = {
@@ -306,6 +329,12 @@ final class TypeScriptGenerator(using sv: SchemaView)
       if !hasInterface(cls) then claim(className(cls), s"the union of abstract class '${cls.name}'")
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
+    if (document ne null) {
+      claim(
+        documentTypeName(sv),
+        s"the document type of tree root '${document.name}'",
+      )
+    }
     if hasFunctions then claim(functionsInterfaceName(sv), "the functions of the schema")
     if usesResult then {
       claim("Result", "the Result helper type")
@@ -325,7 +354,17 @@ final class TypeScriptGenerator(using sv: SchemaView)
         .sortBy(fv => sv.elementOrder(fv.function))
     val usesResult =
       options.errorHandling == TypeScriptErrorHandling.Result && functions.exists(_.errors.nonEmpty)
-    checkNames(classes, enums, functions.nonEmpty, usesResult)
+    // The tree root gets a document type only if its interface is written and `tree_root_as` isn't
+    // `plain`. A `linkml:Any` class has no interface.
+    val root = options.pruning.treeRootClass.orNullFast
+    val inlineType =
+      if ((root ne null) && classes.exists(_.name == root.name)) root.treeRootInlineType(None)
+      else InlineType.plain
+    val document = inlineType match {
+      case _: InlineType.plain.type => null
+      case _ => root
+    }
+    checkNames(classes, enums, document, functions.nonEmpty, usesResult)
 
     sink.append(GeneratedHeader("//"))
     classes.foreach { cls =>
@@ -343,6 +382,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     if functions.nonEmpty then {
       sink.append('\n')
       writeFunctions(sink, functions, ctx)
+    }
+    if (document ne null) {
+      sink.append('\n')
+      writeDocument(sink, document, inlineType, ctx)
     }
     if usesResult then {
       sink.append('\n')

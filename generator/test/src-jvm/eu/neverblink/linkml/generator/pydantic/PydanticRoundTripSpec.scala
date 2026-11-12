@@ -133,8 +133,9 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     yield {
       val dir = outDir / variant / safeName(model.name)
       val rootName = model.sv.treeRoot.map { root =>
-        val name = PydanticGenerator(using model.sv).className(root)
-        if source.contains(s"\nclass ${name}Document(") then name.concat("Document") else name
+        val gen = PydanticGenerator(using model.sv)
+        val document = gen.documentTypeName(model.sv)
+        if source.contains(s"\nclass $document(") then document else gen.className(root)
       }
       ManifestModel(
         id = s"$variant/${model.name}",

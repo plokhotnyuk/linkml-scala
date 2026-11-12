@@ -52,6 +52,8 @@ classes:
 
 functions:
   scala:
-    description: Generate Scala classes, one file per class, enum and type.
+    description: >-
+      Generate Scala classes, one file per class, enum and type, and one for the type of a whole
+      document when the tree root has a `tree_root_as` other than `plain`.
     parameters: ScalaGeneratorOptions
     returns: Files

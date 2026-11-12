@@ -374,7 +374,8 @@ class Generators:
         package: str = "eu.neverblink.linkml.metamodel",
         skip_leaf_interfaces: bool = True,
     ) -> dict[str, str]:
-        """Generate Scala classes, one file per class, enum and type.
+        """Generate Scala classes, one file per class, enum and type, and one for the type of a
+        whole document when the tree root has a `tree_root_as` other than `plain`.
 
         :param error_handling: How the functions of the schema report their `errors`.
         :param generate_emit_prefixes: Whether to generate a `Prefixes` object with the schema's

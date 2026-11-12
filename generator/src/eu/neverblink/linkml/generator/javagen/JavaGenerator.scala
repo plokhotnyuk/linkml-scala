@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.javagen
 
 import eu.neverblink.linkml.generator.options.{JavaGeneratorOptions, JavaStyle}
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, TreeRootDocument}
 import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -18,7 +18,7 @@ import scala.util.control.NonFatal
   */
 final class JavaGenerator(using sv: SchemaView) extends JavaRenamer {
   import JavaGenerator.*
-  import JavaRenamer.{keywords, unreserved}
+  import JavaRenamer.keywords
 
   /** The generated files, by file name. */
   def generate(options: JavaGeneratorOptions = JavaGeneratorOptions()): Seq[(String, String)] = {
@@ -41,8 +41,8 @@ final class JavaGenerator(using sv: SchemaView) extends JavaRenamer {
     }
     val enums = defs.enums.map(ev => file(enumName(ev), writeEnum(ev, writer)))
     val document = defs.document.map { (root, name) =>
-      val model =
-        JavaDocument(name, documentType(root, ctx), Seq(s"A whole document: ${documentDoc(root)}."))
+      val doc = TreeRootDocument.description(root, root.treeRootInlineType(None))
+      val model = JavaDocument(name, documentType(root, ctx), Seq(doc))
       file(name, writer.document(model))
     }
     val errors = defs.errors.map(cls => file(errorName(cls), writeError(cls)))
@@ -67,11 +67,7 @@ final class JavaGenerator(using sv: SchemaView) extends JavaRenamer {
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums = sv.enums.values.filter(ev => query.reachable(ev) && definesEnum(ev))
       .toVector.sortBy(ev => sv.elementOrder(ev._enum))
-    val treeRootOverride = options.pruning match {
-      case Pruning.treeRoot(o) => o
-      case _ => None
-    }
-    val root = sv.treeRootWithOverride(treeRootOverride).get
+    val root = options.pruning.treeRootClass
       .filter(r => classes.exists(_.name == r.name))
       .filter { r =>
         r.treeRootInlineType(None) match {
@@ -86,7 +82,7 @@ final class JavaGenerator(using sv: SchemaView) extends JavaRenamer {
     Definitions(
       classes,
       enums,
-      root.map(r => (r, unreserved(className(r).concat("Document")))),
+      root.map(r => (r, documentTypeName(sv))),
       functions,
       errors,
     )
@@ -364,12 +360,6 @@ final class JavaGenerator(using sv: SchemaView) extends JavaRenamer {
     root.treeRootInlineType(None) match {
       case InlineType.dict(form) => dictType(root, form, ctx)
       case _ => FieldType.NativeList(className(root))
-    }
-
-  private def documentDoc(root: ClassView): String =
-    root.treeRootInlineType(None) match {
-      case InlineType.dict(_) => s"a dict of ${root.name} by key"
-      case _ => s"a list of ${root.name}"
     }
 
   private def referenceDoc(attribute: AttributeView): Option[String] = {

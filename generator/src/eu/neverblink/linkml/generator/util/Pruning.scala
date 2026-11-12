@@ -5,6 +5,7 @@ import eu.neverblink.linkml.metamodel.TypeDefinition
 import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.{
+  ClassView,
   ElementView,
   IncludeAllReachabilityQuery,
   SchemaReachabilityQuery,
@@ -68,6 +69,17 @@ enum Pruning:
   def underivedQuery()(using sv: SchemaView): SchemaReachabilityQuery = {
     if this == skip then IncludeAllReachabilityQuery()
     else sv.underivedReachabilityQuery(initialSet)
+  }
+
+  /** The tree root class: the override of tree root pruning if it has one, otherwise the schema's
+    * own tree root. Fails if the override names no class.
+    */
+  def treeRootClass(using sv: SchemaView): Option[ClassView] = {
+    val treeRootOverride = this match {
+      case p: Pruning.treeRoot => p._override
+      case _ => None
+    }
+    sv.treeRootWithOverride(treeRootOverride).get
   }
 
 object Pruning:

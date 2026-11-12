@@ -15,6 +15,10 @@ import { Description, Options, Usage } from '../../../components/converter';
 
 <Options name="scala" />
 
+If the tree root has a `tree_root_as` other than `plain`, the output also has a type for the
+whole document, such as `ZooDocument`, so that one codec reads and writes the whole document. See
+[Whole documents in generators](/docs/tree-root-as/).
+
 ## Inherited fields
 
 A class extends the abstract classes and traits of its parent classes and mixins, which declare its fields as `def`s. A subclass's field overrides them, so it keeps the type of its parents' fields where a `slot_usage` would change it:

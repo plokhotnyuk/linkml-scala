@@ -69,8 +69,8 @@ wrong JSON type, an explicit `null` for a required slot, and data that breaks a 
 schema, the same as the JSON Schema would. The classes are the same, only how they load differs.
 
 If the tree root is a list or a dict (`tree_root_as` is `list` or a dict), the package also has a
-document class for the whole JSON document, named after the tree root:
-`mapper.readValue(text, ZooDocument.class)`. Its value is in `getRoot()`.
+document class for the whole JSON document, such as `ZooDocument`, so that you can load the whole
+document at once. See [Whole documents in generators](/docs/tree-root-as/).
 
 ## Example
 

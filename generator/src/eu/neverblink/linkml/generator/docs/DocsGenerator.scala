@@ -983,8 +983,8 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
 object DocsGenerator {
 
-  /** All names that the Python generator can give its classes, class unions, document types,
-    * errors, enums and functions `Protocol` for [[sv]], whatever is pruned.
+  /** All names that the Python generator can give its classes, class unions, document type, errors,
+    * enums and functions `Protocol` for [[sv]], whatever is pruned.
     */
   private[docs] def possiblePythonNames(sv: SchemaView): Set[String] = {
     val names = Set.newBuilder[String]
@@ -992,11 +992,11 @@ object DocsGenerator {
       val name = PydanticRenamer.className(cv)
       names.addOne(name)
       names.addOne("Any".concat(name))
-      names.addOne(name.concat("Document"))
       names.addOne(PydanticRenamer.errorName(cv))
     }
     sv.enums.values.foreach(ev => names.addOne(PydanticRenamer.enumName(ev)))
     names.addOne(PydanticRenamer.functionsProtocolName(sv))
+    names.addOne(PydanticRenamer.documentTypeName(sv))
     names.result()
   }
 

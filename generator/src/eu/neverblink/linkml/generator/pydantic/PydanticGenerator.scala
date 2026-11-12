@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.pydantic
 
 import eu.neverblink.linkml.generator.options.PydanticGeneratorOptions
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, TreeRootDocument}
 import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
@@ -547,7 +547,7 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   /** The type of the whole document, if the tree root needs one: a designated union, or a form
-    * other than a single object.
+    * other than a single object. Keep in step with the filter of the tree root in [[definitions]].
     */
   private def documentType(root: ClassView, ctx: Context): Option[String] = {
     val ref = classRef(root)
@@ -596,15 +596,13 @@ final class PydanticGenerator(using sv: SchemaView)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums = sv.enums.values.filter(ev => query.reachable(ev) && definesEnum(ev))
       .toVector.sortBy(ev => sv.elementOrder(ev._enum))
-    val treeRootOverride = options.pruning match {
-      case Pruning.treeRoot(o) => o
-      case _ => None
-    }
-    val root = sv.treeRootWithOverride(treeRootOverride).get
+    // A single object of a class without a type designator needs no document class
+    val root = options.pruning.treeRootClass
       .filter(r => classes.exists(_.name == r.name))
+      .filter(r => r.treeRootInlineType(None) != InlineType.plain || classRef(r) != className(r))
     val functions = sv.functions.values.filter(query.reachable).toVector
       .sortBy(fv => sv.elementOrder(fv.function))
-    Definitions(classes, enums, root.map(r => (r, className(r).concat("Document"))), functions)
+    Definitions(classes, enums, root.map(r => (r, documentTypeName(sv))), functions)
   }
 
   /** The names of the classes, class unions, enums and document type that the module defines with
@@ -667,11 +665,11 @@ final class PydanticGenerator(using sv: SchemaView)
       documentType(r, ctx).foreachFast { tpe =>
         ctx.imports.pydantic("RootModel")
         body.append("\n\nclass ")
-        body.append(className(r).concat("Document"))
+        body.append(documentTypeName(sv))
         body.append("(RootModel[")
         body.append(tpe)
         body.append("]):\n")
-        writeDoc(body, Seq(s"A whole document: ${documentDoc(r)}."), "    ")
+        writeDoc(body, Seq(TreeRootDocument.description(r, r.treeRootInlineType(None))), "    ")
       }
     }
 
@@ -692,14 +690,6 @@ final class PydanticGenerator(using sv: SchemaView)
     sink.append(helpers.result)
     sink.append(body.result)
   }
-
-  private def documentDoc(root: ClassView): String =
-    root.treeRootInlineType(None) match {
-      case InlineType.plain => s"a ${root.name}"
-      case InlineType.optional => s"a ${root.name} or null"
-      case InlineType.list => s"a list of ${root.name}"
-      case InlineType.dict(_) => s"a dict of ${root.name} by key"
-    }
 
   private def writeBase(sink: CharSink, ctx: Context): Unit = {
     val im = ctx.imports

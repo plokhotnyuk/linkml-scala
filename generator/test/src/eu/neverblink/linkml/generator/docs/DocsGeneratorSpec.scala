@@ -683,22 +683,24 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
         """classes:
           |  Container:
           |    tree_root: true
-          |    slots: [ContainerDocument]
+          |    extensions:
+          |      tree_root_as: list
+          |    slots: [TestDocument]
           |slots:
-          |  ContainerDocument:
+          |  TestDocument:
           |    range: status_kind
           |enums:
           |  status_kind: {}
           |""".stripMargin,
       )
       val pages = files(sv)
-      // The Python generator names the document type of the tree root `ContainerDocument`, so it
-      // renames the field
-      pages("slots/container_document.md") should include(
-        "- **Names in code:** `containerDocument` (Scala, Java), `ContainerDocument` " +
-          "(TypeScript), `ContainerDocument_` (Python), `container_document` (GraphQL)\n",
+      // The Python generator names the document type of the schema `TestDocument`, so it renames
+      // the field
+      pages("slots/test_document.md") should include(
+        "- **Names in code:** `testDocument` (Scala, Java), `TestDocument` " +
+          "(TypeScript), `TestDocument_` (Python), `test_document` (GraphQL)\n",
       )
-      PydanticGenerator(using sv).serialize() should include("    ContainerDocument_: ")
+      PydanticGenerator(using sv).serialize() should include("    TestDocument_: ")
       // An enum without values is a string in Scala, Python and Java, so only TypeScript and
       // GraphQL have a type with its name
       pages("enums/status_kind.md") should include(

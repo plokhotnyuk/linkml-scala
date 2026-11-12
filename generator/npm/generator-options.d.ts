@@ -499,7 +499,7 @@ export interface GeneratorFunctions {
   /** Generate RDFS, serialized as N-Triples or Turtle. */
   rdfs(params?: RdfsGeneratorOptions): string;
 
-  /** Generate Scala classes, one file per class, enum and type. */
+  /** Generate Scala classes, one file per class, enum and type, and one for the type of a whole document when the tree root has a `tree_root_as` other than `plain`. */
   scala(params?: ScalaGeneratorOptions): Files;
 
   /** Generate SHACL shapes, serialized as N-Triples or Turtle. */

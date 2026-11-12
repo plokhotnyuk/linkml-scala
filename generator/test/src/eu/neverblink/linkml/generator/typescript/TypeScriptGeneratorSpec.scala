@@ -410,6 +410,131 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("export type KeyOptional<T, K extends keyof T>")
     }
 
+    "write a document type for a tree root that is not one object" when {
+      def withTreeRootAs(form: String): String = generate(
+        s"""classes:
+           |  Item:
+           |    tree_root: true
+           |    extensions:
+           |      tree_root_as: $form
+           |    attributes:
+           |      key: {key: true}
+           |      value: {required: true}
+           |""".stripMargin,
+      )
+
+      "plain: none" in {
+        withTreeRootAs("plain") should not include "TestDocument"
+      }
+
+      "optional: the object or null" in {
+        withTreeRootAs("optional") should include(
+          "/** A whole document: one Item or null. */\nexport type TestDocument = Item | null;\n",
+        )
+      }
+
+      "list: a list of objects" in {
+        withTreeRootAs("list") should include(
+          "/** A whole document: a list of Item. */\nexport type TestDocument = Item[];\n",
+        )
+      }
+
+      "compact_dict: a dict of objects by key" in {
+        val ts = withTreeRootAs("compact_dict")
+        ts should include(
+          "export type TestDocument = Record<string, KeyOptional<Item, \"key\">>;\n",
+        )
+        ts should include("export type KeyOptional<T, K extends keyof T>")
+      }
+
+      "simple_dict: a dict of values or objects by key" in {
+        val ts = withTreeRootAs("simple_dict")
+        ts should include(
+          "export type TestDocument = Record<string, string | KeyOptional<Item, \"key\">>;\n",
+        )
+        ts should include("export type KeyOptional<T, K extends keyof T>")
+      }
+
+      "a tree root with subclasses: the union of the class and its subclasses" in {
+        def withTreeRootAs(form: String): String = generate(
+          s"""classes:
+             |  Animal:
+             |    tree_root: true
+             |    extensions:
+             |      tree_root_as: $form
+             |    attributes:
+             |      kind: {range: string, designates_type: true}
+             |  Dog:
+             |    is_a: Animal
+             |""".stripMargin,
+        )
+        withTreeRootAs("list") should include("export type TestDocument = AnyAnimal[];\n")
+        withTreeRootAs("optional") should include("export type TestDocument = AnyAnimal | null;\n")
+      }
+
+      "the tree root that pruning picks, not the one of the schema" in {
+        val ts = generate(
+          """classes:
+            |  Container:
+            |    tree_root: true
+            |    attributes:
+            |      items: {range: Item, multivalued: true, inlined_as_list: true}
+            |  Item:
+            |    extensions:
+            |      tree_root_as: list
+            |""".stripMargin,
+          TypeScriptGeneratorOptions(pruningMode = PruningMode.TreeRoot, treeRoot = Some("Item")),
+        )
+        ts should include("export type TestDocument = Item[];\n")
+        ts should not include "Container"
+      }
+
+      "a schema with a reserved name: no underscore, as the type name isn't reserved" in {
+        val sv = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            """id: https://neverblink.eu/linkml/typescript/record/
+              |name: record
+              |imports:
+              |  - linkml:types
+              |classes:
+              |  Item:
+              |    tree_root: true
+              |    extensions:
+              |      tree_root_as: list
+              |""".stripMargin,
+          ),
+        )
+        TypeScriptGenerator(using sv).serialize(TypeScriptGeneratorOptions()) should include(
+          "export type RecordDocument = Item[];\n",
+        )
+      }
+
+      "a linkml:Any tree root: none, as no interface is generated for it" in {
+        generate(
+          """classes:
+            |  Thing:
+            |    class_uri: linkml:Any
+            |    tree_root: true
+            |    extensions:
+            |      tree_root_as: list
+            |""".stripMargin,
+        ) should not include "TestDocument"
+      }
+
+      "a class with the same name: an error" in {
+        val ex = the[IllegalArgumentException] thrownBy generate(
+          """classes:
+            |  Item:
+            |    tree_root: true
+            |    extensions:
+            |      tree_root_as: list
+            |  TestDocument:
+            |""".stripMargin,
+        )
+        ex.getMessage should include("'TestDocument'")
+      }
+    }
+
     "generate type designators as discriminated unions" in {
       val ts = generate(
         """classes:

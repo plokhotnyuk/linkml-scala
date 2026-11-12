@@ -44,7 +44,7 @@ keeper = Keeper(id="k1", name="Ann", since=date(2020, 1, 2))
 lion = Lion(name="Leo")   # kind="Lion" is filled in automatically
 ```
 
-If the tree root isn't a single object (`tree_root_as` is `list`, `optional`, or a dict), or if it's a class with a type designator, the file also has a document class for the whole JSON document, named after the tree root: `ZooDocument.model_validate_json(text)`. Its value is in `.root`.
+If the tree root isn't a single object (`tree_root_as` is `list`, `optional`, or a dict), or if it's a class with a type designator, the file also has a document class for the whole JSON document, such as `ZooDocument`, so that you can load the whole document at once. See [Whole documents in generators](/docs/tree-root-as/).
 
 ## Example
 

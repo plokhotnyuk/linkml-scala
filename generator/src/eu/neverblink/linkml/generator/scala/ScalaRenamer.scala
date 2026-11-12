@@ -64,6 +64,13 @@ trait ScalaRenamer extends Renamer {
   def functionsTraitName(sv: SchemaView): String =
     scalaPascal(Case.base(sv.root.name)).concat("Functions")
 
+  /** The name of the type of a whole document, such as `ZooDocument` for a schema named `zoo`. Only
+    * the whole name is checked for reserved words, so a schema named `string` gives
+    * `StringDocument`.
+    */
+  def documentTypeName(sv: SchemaView): String =
+    scalaPascal(Case.base(sv.root.name.concat("_document")))
+
   /** The name of the exception class for an error class, such as `NotFoundException`. */
   def exceptionName(el: ClassView): String = className(el).concat("Exception")
 }

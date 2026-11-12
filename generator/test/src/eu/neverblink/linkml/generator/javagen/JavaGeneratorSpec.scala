@@ -546,14 +546,15 @@ class JavaGeneratorSpec extends AnyWordSpec, Matchers {
            |      name:
            |""".stripMargin,
       )
-      val list = files("list")("ItemDocument.java")
+      val list = files("list")("TestDocument.java")
       list should include("/** A whole document: a list of Item. */")
-      list should include("    public ItemDocument(List<Item> root) {")
+      list should include("    public TestDocument(List<Item> root) {")
       list should include("    @JsonValue\n    public List<Item> getRoot() {")
-      val dict = files("compact_dict")("ItemDocument.java")
-      dict should include("    public ItemDocument(Map<String, Item> root) {")
+      val dict = files("compact_dict")("TestDocument.java")
+      dict should include("/** A whole document: a dict of Item by key. */")
+      dict should include("    public TestDocument(Map<String, Item> root) {")
       dict should include("    @JsonAnyGetter\n    @JsonIgnoreProperties(value = \"id\"")
-      files("optional").keySet should not contain "ItemDocument.java"
+      files("optional").keySet should not contain "TestDocument.java"
     }
 
     "write titles and descriptions as doc comments, escaped" in {

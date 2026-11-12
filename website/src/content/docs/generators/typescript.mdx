@@ -32,6 +32,11 @@ const zoo = JSON.parse(text) as Zoo;          // load
 const text2 = JSON.stringify(zoo, null, 2);   // dump
 ```
 
+If the tree root has a `tree_root_as` other than `plain`, a document isn't one object. The
+file then also has a type for the whole document, such as `ZooDocument`, so that you can load
+the whole document at once: `JSON.parse(text) as ZooDocument`. See
+[Whole documents in generators](/docs/tree-root-as/).
+
 The cast is not checked at runtime. If the JSON doesn't fit the schema, you find out only when
 your code reads a field that isn't what the type says. If the data comes from somewhere you
 don't trust, validate it first with the JSON Schema from `to json-schema`.

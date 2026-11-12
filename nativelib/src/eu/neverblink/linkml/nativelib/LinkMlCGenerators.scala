@@ -119,7 +119,8 @@ object LinkMlCGenerators {
   def rdfs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.rdfs)
 
-  /** Generate Scala classes, one file per class, enum and type. Returns JSON. Options:
+  /** Generate Scala classes, one file per class, enum and type, and one for the type of a whole
+    * document when the tree root has a `tree_root_as` other than `plain`. Returns JSON. Options:
     * `error_handling`, `generate_emit_prefixes`, `metadata_language`, `package`,
     * `skip_leaf_interfaces`.
     */

@@ -4,7 +4,6 @@ import eu.neverblink.linkml.generator.options.FrictionlessGeneratorOptions
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, WriterConfig, writeToString}
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
 import eu.neverblink.linkml.generator.frictionless.FieldDescriptor.types
-import eu.neverblink.linkml.generator.util.Pruning
 import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.schemaview.*
@@ -69,10 +68,7 @@ class FrictionlessGenerator(using sv: SchemaView)
   /** The classes that will be rendered as tables. */
   private def tables(options: FrictionlessGeneratorOptions): Seq[Table] = {
     val query = options.pruning.derivedQuery(false, true)
-    val treeRoot = sv.treeRootWithOverride(options.pruning match {
-      case Pruning.treeRoot(o) => o
-      case _ => None
-    }).get
+    val treeRoot = options.pruning.treeRootClass
 
     val classes = sv.sortedClasses
       .filter(cv => query.reachable(cv) && !cv.isAny)

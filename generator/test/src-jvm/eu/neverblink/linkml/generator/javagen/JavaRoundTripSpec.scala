@@ -116,9 +116,11 @@ class JavaRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
           os.write.over(outDir / variant / "src" / pkg / name, source, createFolders = true),
         )
         val root = model.sv.treeRoot.map { root =>
-          val name = JavaGenerator().className(root)
-          val document = name.concat("Document")
-          s"$pkg.${if files.exists(_._1 == s"$document.java") then document else name}"
+          val gen = JavaGenerator()
+          val document = gen.documentTypeName(model.sv)
+          val name =
+            if files.exists(_._1 == s"$document.java") then document else gen.className(root)
+          s"$pkg.$name"
         }
         Generated(pkg, root, schemas.getSchema(JsonSchemaGenerator().serialize(jsonOptions)))
       }

@@ -594,17 +594,30 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
            |      name: {range: string}
            |      count: {range: integer}
            |""".stripMargin
-      generate(schema("plain")) should not include "ItemDocument"
+      generate(schema("plain")) should not include "TestDocument"
       generate(schema("optional")) should include(
-        "class ItemDocument(RootModel[Item | None]):",
+        "class TestDocument(RootModel[Item | None]):",
       )
+      generate(schema("optional")) should include("A whole document: one Item or null.")
       generate(schema("list")) should include(
-        "class ItemDocument(RootModel[list[Item]]):",
+        "class TestDocument(RootModel[list[Item]]):",
       )
       generate(schema("compact_dict")) should include(
-        """class ItemDocument(RootModel[Annotated[dict[str, Item], _with_keys("id"), """ +
+        """class TestDocument(RootModel[Annotated[dict[str, Item], _with_keys("id"), """ +
           """_without_keys("id")]]):""",
       )
+    }
+
+    "keep the name of the document class free for a class when no document class is written" in {
+      val py = generate(
+        """classes:
+          |  Item:
+          |    tree_root: true
+          |  TestDocument:
+          |""".stripMargin,
+      )
+      py should include("class TestDocument(")
+      py should not include "RootModel"
     }
 
     "write titles and descriptions as docstrings" in {
