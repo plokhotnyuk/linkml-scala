@@ -1472,6 +1472,123 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "report a wider cardinality when exact_cardinality is read before the minimum and maximum" in {
+      val schemaYaml =
+        """id: https://example.org/items/
+          |name: items
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: items
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - items
+          |  ExactlyTwo:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        exact_cardinality: 2
+          |  ExactlyFour:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        exact_cardinality: 4
+          |  ExactlyOne:
+          |    is_a: ExactlyTwo
+          |    slot_usage:
+          |      items:
+          |        exact_cardinality: 1
+          |  Pair:
+          |    slots:
+          |      - pair
+          |    slot_usage:
+          |      pair:
+          |        exact_cardinality: 2
+          |  AtLeastOne:
+          |    is_a: Pair
+          |    slot_usage:
+          |      pair:
+          |        minimum_cardinality: 1
+          |slots:
+          |  items:
+          |    range: string
+          |    multivalued: true
+          |    minimum_cardinality: 1
+          |    maximum_cardinality: 3
+          |  pair:
+          |    range: string
+          |    multivalued: true
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // `ExactlyTwo` stays between 1 and 3. `ExactlyFour` and `ExactlyOne` keep the inherited
+      // minimum and maximum, which the OWL generator reads after `exact_cardinality`.
+      // `AtLeastOne` keeps the inherited `exact_cardinality`, which the JSON Schema, SHACL and
+      // Pydantic generators read after `minimum_cardinality`.
+      sv.validationProblems.collect { case p: WiderSlotCardinality =>
+        (p.className, p.slotCardinality, p.parentName, p.parentCardinality)
+      } should contain theSameElementsAs Seq(
+        ("ExactlyFour", "4..4", "Base", "1..3"),
+        ("ExactlyOne", "1..1", "ExactlyTwo", "2..2"),
+        ("AtLeastOne", "1..2", "Pair", "2..2"),
+      )
+    }
+
+    "report a wider cardinality that a class gets from another parent" in {
+      val schemaYaml =
+        """id: https://example.org/parents/
+          |name: parents
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: parents
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - items
+          |    slot_usage:
+          |      items:
+          |        maximum_cardinality: 2
+          |  Many:
+          |    mixin: true
+          |    slots:
+          |      - items
+          |    slot_usage:
+          |      items:
+          |        maximum_cardinality: 5
+          |  Child:
+          |    is_a: Base
+          |    mixins:
+          |      - Many
+          |  GrandChild:
+          |    is_a: Child
+          |slots:
+          |  items:
+          |    range: string
+          |    multivalued: true
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // `Child` gets the maximum of the mixin, which allows more values than `Base`.
+      // `GrandChild` keeps what `Child` has.
+      sv.validationProblems.collect { case p: WiderSlotCardinality => p.infer() } shouldBe Seq(
+        WiderSlotCardinality(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/parents/")),
+            jsonPointer = Some("/classes/Child"),
+          ),
+          className = "Child",
+          slotName = "items",
+          slotCardinality = "0..5",
+          parentName = "Base",
+          parentCardinality = "0..2",
+        ).infer(),
+      )
+    }
+
     "warn about a string ifabsent without quotes in the root schema" in {
       val root =
         """id: https://example.org/root

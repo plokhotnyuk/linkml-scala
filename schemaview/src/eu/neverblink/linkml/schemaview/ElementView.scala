@@ -396,7 +396,8 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   `ApplySlotUsage` from
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
     */
-  private lazy val slotChanges: collection.Map[String, collection.Seq[SlotDefinition]] = {
+  private[schemaview] lazy val slotChanges
+      : collection.Map[String, collection.Seq[SlotDefinition]] = {
     val ps = parents
     if (cls.slotUsage.isEmpty && cls.attributes.isEmpty && ps.lengthCompare(1) <= 0) {
       if (ps.isEmpty) Map.empty else ps.head.slotChanges
@@ -662,10 +663,21 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *
     * The LinkML spec lets a class change an inherited range only to one derived from it.
     */
-  def hasRangeDerivedFrom(other: SlotView): Boolean = {
-    val ancestors = other.allowedRanges
-    ancestors.exists(a => sv.classes.get(a).exists(_.isAny)) ||
-    allowedRanges.forall(r => ancestors.exists(sv.isDerivedFrom(r, _)))
+  def hasRangeDerivedFrom(other: SlotView): Boolean =
+    hasSameRangesAs(other) || {
+      val ancestors = other.allowedRanges
+      ancestors.exists(a => sv.classes.get(a).exists(_.isAny)) ||
+      allowedRanges.forall(r => ancestors.exists(sv.isDerivedFrom(r, _)))
+    }
+
+  /** Whether this slot and `other` set their ranges in the same way. Two slots without a `range`
+    * match only when one schema defines both, as each gets the default range of its schema.
+    */
+  private def hasSameRangesAs(other: SlotView): Boolean = {
+    val s = slot
+    val o = other.slot
+    s.range == o.range && s.anyOf == o.anyOf && s.exactlyOneOf == o.exactlyOneOf &&
+    s.allOf == o.allOf && (s.range.isDefined || (definingSchema eq other.definingSchema))
   }
 
   /** The names of the ranges that the values of this slot may have: those that its `range`, and its
