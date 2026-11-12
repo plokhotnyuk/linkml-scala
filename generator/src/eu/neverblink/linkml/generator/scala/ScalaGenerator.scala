@@ -101,7 +101,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   private def generateClasses(options: ScalaGeneratorOptions): Iterable[(String, String)] = {
     // A field overrides the `def` of a parent only if its type conforms to the `def`'s. So a
     // parent declares the `def` only if the fields of all its descendants do.
-    val sharedFields = new SharedSlots((own, their) => overrides(own, their, options))
+    val sharedFields =
+      new SharedSlots((ancestor, descendant) => overrides(ancestor, descendant, options))
     sv.classes.values.flatMap { classView =>
       // Let's treat linkml:Any as a built-in: no type aliasing
       if classView.isAny then None
@@ -143,8 +144,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     }
   }
 
-  /** Whether the field of a descendant (`their`) can override the `def` of an ancestor (`own`). It
-    * can when it has:
+  /** Whether the field of a descendant can override the `def` of an ancestor. It can when it has:
     *   - the same Scala type, or
     *   - the same wrapper (`Option`, `Seq` or `Map`) around a subtype.
     *
@@ -153,19 +153,22 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * reports a range that is not derived from the ancestor's as an error, so this doesn't check it.
     */
   private def overrides(
-      own: AttributeView,
-      their: AttributeView,
+      ancestor: AttributeView,
+      descendant: AttributeView,
       options: ScalaGeneratorOptions,
-  ): Boolean =
-    makeTypedDefault(own, options).typeName == makeTypedDefault(their, options).typeName ||
-      InlineType(own.slotView) == InlineType(their.slotView) && (own match {
-        case _: TypeAttributeView => their.isInstanceOf[TypeAttributeView]
-        case _: ClassReferenceAttributeView => their.isInstanceOf[ClassReferenceAttributeView]
-        case c: ClassInlineAttributeView =>
-          their.isInstanceOf[ClassInlineAttributeView] &&
-          baseRange(own, options).scalaType == className(c.classView)
-        case _ => false
-      })
+  ): Boolean = {
+    val ancestorType = makeTypedDefault(ancestor, options).typeName
+    val descendantType = makeTypedDefault(descendant, options).typeName
+    ancestorType == descendantType ||
+    InlineType(ancestor.slotView) == InlineType(descendant.slotView) && (ancestor match {
+      case _: TypeAttributeView => descendant.isInstanceOf[TypeAttributeView]
+      case _: ClassReferenceAttributeView => descendant.isInstanceOf[ClassReferenceAttributeView]
+      case c: ClassInlineAttributeView =>
+        descendant.isInstanceOf[ClassInlineAttributeView] &&
+        baseRange(ancestor, options).scalaType == className(c.classView)
+      case _ => false
+    })
+  }
 
   /** Generate Scala counterparts of regular (static) LinkML enums.
     * @return

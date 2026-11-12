@@ -87,10 +87,10 @@ class GraphQlGenerator(using sv: SchemaView)
     * widens the range or cardinality of a slot as an error, so this checks only the name and that a
     * class range stays a class.
     */
-  private lazy val sharedFields = new SharedSlots((own, their) =>
-    slotName(own.slotView) == slotName(their.slotView) && (
-      fieldRange(own) == fieldRange(their) || own.isInstanceOf[ClassAttributeView] &&
-        their.isInstanceOf[ClassAttributeView]
+  private lazy val sharedFields = new SharedSlots((ancestor, descendant) =>
+    slotName(ancestor.slotView) == slotName(descendant.slotView) && (
+      fieldRange(ancestor) == fieldRange(descendant) || ancestor.isInstanceOf[ClassAttributeView] &&
+        descendant.isInstanceOf[ClassAttributeView]
     ),
   )
 

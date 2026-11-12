@@ -11,11 +11,13 @@ import scala.collection.mutable
   * the slot, and the descendants describe their own versions instead.
   *
   * @param compatible
-  *   Whether a descendant's version of a slot (the second argument) fits what the format passes
-  *   down from an ancestor's version (the first argument). It is not called when both versions are
-  *   the same slot.
+  *   Whether a descendant's version of a slot fits what the format passes down from an ancestor's
+  *   version. It takes the ancestor's version first, then the descendant's. It is not called when
+  *   both versions are the same slot.
   */
-final class SharedSlots(compatible: (AttributeView, AttributeView) => Boolean) {
+final class SharedSlots(
+    compatible: (ancestor: AttributeView, descendant: AttributeView) => Boolean,
+) {
 
   /** The names of the slots of each class that some descendant does not share, by class name. */
   private val unshared = mutable.HashMap.empty[String, collection.Set[String]]
@@ -46,15 +48,15 @@ final class SharedSlots(compatible: (AttributeView, AttributeView) => Boolean) {
       // Stops the recursion if the classes have an inheritance cycle
       unshared.update(cls.name, Set.empty)
       var result: mutable.HashSet[String] = null
-      val own = cls.attributeViews
+      val views = cls.attributeViews
       cls.children.foreach { child =>
         val below = unsharedOf(child)
-        val theirs = child.attributeViews
-        own.foreachEntry { (name, mine) =>
-          val their = theirs.getOrElse(name, null)
+        val childViews = child.attributeViews
+        views.foreachEntry { (name, ancestor) =>
+          val descendant = childViews.getOrElse(name, null)
           if (
-            (their ne null) && (below.contains(name) ||
-              (their.slotView ne mine.slotView) && !compatible(mine, their))
+            (descendant ne null) && (below.contains(name) ||
+              (descendant.slotView ne ancestor.slotView) && !compatible(ancestor, descendant))
           ) {
             if (result eq null) result = mutable.HashSet.empty[String]
             result.addOne(name)
