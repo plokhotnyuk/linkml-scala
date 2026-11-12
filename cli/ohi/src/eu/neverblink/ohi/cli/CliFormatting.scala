@@ -22,6 +22,20 @@ private[cli] object CliFormatting {
       "  " + styled(f"${stringify(format)}%-14s", "36", colored) + label
     }.mkString("\n")
 
+  /** Describe a publication's element counts, or `None` when neither is known. Equal counts, as for
+    * an ontology published in LinkML, are shown once.
+    */
+  def elements(native: Option[Int], linkml: Option[Int]): Option[String] =
+    (native, linkml) match {
+      case (Some(native), Some(linkml)) if native == linkml => Some(native.toString)
+      case (None, None) => None
+      case (native, linkml) =>
+        Some(
+          (native.map(count => s"$count native") ++ linkml.map(count => s"$count in LinkML"))
+            .mkString(", "),
+        )
+    }
+
   def enabled(stream: PrintStream): Boolean =
     TerminalOutput.colored(stream)
 

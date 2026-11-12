@@ -115,6 +115,8 @@ export interface Publication {
   dependencies: Dependency[];
   /** Short description of the ontology's domain and intended use. */
   description: string;
+  /** Number of LinkML elements in the publication. */
+  element_count?: number;
   /** Keywords describing the ontology's subject. An empty list means no keywords are provided. */
   keywords: string[];
   /** Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics. */
@@ -125,6 +127,8 @@ export interface Publication {
   namespace: string;
   /** Optional preferred primary RDF term namespace. Preserve the complete value including any trailing delimiter. Not the catalog namespace and not necessarily the ontology IRI. */
   namespace_iri?: string;
+  /** Number of elements in the publication's native format, as published upstream, such as the classes and properties of an OWL ontology. */
+  native_element_count?: number;
   /** Optional abbreviation for namespace_iri, without whitespace or a colon. Requires namespace_iri. This constraint does not certify prefix syntax for every ontology language. */
   preferred_prefix?: string;
   /** First successful Hub publication time for this immutable release. Backend emits UTC date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this publication. Not an upstream release date. */
@@ -146,6 +150,8 @@ export interface SearchHit {
   base_url: string;
   /** Short description of the ontology's domain and intended use. */
   description: string;
+  /** Number of LinkML elements in the publication. */
+  element_count?: number;
   /** Formats of the publication's available artifacts. Each value identifies both the ontology language and serialization syntax, as in artifact.format. */
   formats: Format[];
   /** Keywords describing the ontology's subject. An empty list means no keywords are provided. */
@@ -156,6 +162,8 @@ export interface SearchHit {
   name: string;
   /** Namespace qualifying the ontology name, such as w3c in w3c/prov-o. */
   namespace: string;
+  /** Number of elements in the publication's native format, as published upstream, such as the classes and properties of an OWL ontology. */
+  native_element_count?: number;
   /** First successful Hub publication time for this immutable release. Backend emits UTC date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this publication. Not an upstream release date. */
   published_at: string;
   /** Display title of the ontology. */

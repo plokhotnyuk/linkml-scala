@@ -22,7 +22,8 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   private val hits = """[
     {"document":{"base_url":"https://example.org/z?revision=2","namespace":"example","name":"z",
       "version":"2.0","title":"Z sensors","description":"Sensor\nmeasurements","formats":["rdfs-turtle","owl-turtle"],
-      "licenses":[],"published_at":"2026-10-13T12:30:00Z"}},
+      "licenses":[],"published_at":"2026-10-13T12:30:00Z","element_count":120,
+      "native_element_count":95}},
     {"document":{"base_url":"https://example.org/a/","namespace":"example","name":"a",
       "version":"1.0","title":"A devices","description":"Device descriptions","formats":["linkml-yaml"],
       "licenses":["MIT"],"published_at":"2026-10-12T12:30:00Z"}}
@@ -312,7 +313,8 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "hits":[
             {"base_url":"https://example.org/z?revision=2","namespace":"example","name":"z","version":"2.0",
              "title":"Z sensors","description":"Sensor\nmeasurements","formats":["rdfs-turtle","owl-turtle"],
-             "licenses":[],"published_at":"2026-10-13T12:30:00Z"},
+             "licenses":[],"published_at":"2026-10-13T12:30:00Z","element_count":120,
+             "native_element_count":95},
             {"base_url":"https://example.org/a/","namespace":"example","name":"a","version":"1.0",
              "title":"A devices","description":"Device descriptions","formats":["linkml-yaml"],
              "licenses":["MIT"],"published_at":"2026-10-12T12:30:00Z"}],
@@ -352,6 +354,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "Sensor measurements",
           "https://example.org/z?revision=2",
           "rdfs-turtle, owl-turtle",
+          "Elements: 95 native, 120 in LinkML",
           "Ontology: example/a",
           "Version: 1.0",
           "A devices",
@@ -366,6 +369,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "rdfs-turtle: 1",
         ).foreach(value => compact should include(value.filterNot(_.isWhitespace)))
         out.linesIterator.count(_.startsWith("  License:")) shouldBe 1
+        out.linesIterator.count(_.startsWith("  Elements:")) shouldBe 1
         out should not include "Tags:"
         out should not include "Published:"
         out should not include "Not supplied"
@@ -625,6 +629,29 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         Seq("licenses", "keywords", "dependencies").foreach { field =>
           result(field).arr shouldBe empty
         }
+      }
+    }
+
+    "show the element counts in human output and keep them in JSON output" in {
+      val counted = json(publication)
+      counted("element_count") = 120
+      counted("native_element_count") = 95
+      withServer(ujson.write(counted)) { (url, _) =>
+        val out = successful(Inspect, "inspect", url)
+        out.linesIterator.filter(_.startsWith("  Elements:")).toSeq shouldBe
+          Seq("  Elements: 95 native, 120 in LinkML")
+        json(successful(Inspect, "inspect", url, "--json")) shouldBe counted
+      }
+    }
+
+    "show equal element counts once in human output, as for an ontology published in LinkML" in {
+      val counted = json(publication)
+      counted("element_count") = 120
+      counted("native_element_count") = 120
+      withServer(ujson.write(counted)) { (url, _) =>
+        successful(Inspect, "inspect", url).linesIterator
+          .filter(_.startsWith("  Elements:"))
+          .toSeq shouldBe Seq("  Elements: 120")
       }
     }
 

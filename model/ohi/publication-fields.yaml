@@ -67,6 +67,20 @@ slots:
       of this publication. Not an upstream release date.
     range: datetime
     required: true
+  element_count:
+    description: Number of LinkML elements in the publication.
+    comments:
+    - For ontologies that are not natively LinkML, this is the count after importing them into
+      LinkML.
+    range: integer
+    minimum_value: 0
+  native_element_count:
+    description: Number of elements in the publication's native format, as published upstream,
+      such as the classes and properties of an OWL ontology.
+    comments:
+    - Counted before any conversion, so it can differ from element_count.
+    range: integer
+    minimum_value: 0
   sha256:
     description: SHA-256 of the file bytes before HTTP content encoding.
     range: string

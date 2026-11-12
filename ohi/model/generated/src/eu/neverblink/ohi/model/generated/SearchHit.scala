@@ -12,6 +12,8 @@ import eu.neverblink.linkml.runtime.*
   *   its publication JSON. Do not append a filename.
   * @param description
   *   Short description of the ontology's domain and intended use.
+  * @param elementCount
+  *   Number of LinkML elements in the publication.
   * @param formats
   *   Formats of the publication's available artifacts. Each value identifies both the ontology
   *   language and serialization syntax, as in artifact.format.
@@ -25,6 +27,9 @@ import eu.neverblink.linkml.runtime.*
   *   ontology across releases.
   * @param namespace
   *   Namespace qualifying the ontology name, such as w3c in w3c/prov-o.
+  * @param nativeElementCount
+  *   Number of elements in the publication's native format, as published upstream, such as the
+  *   classes and properties of an OWL ontology.
   * @param publishedAt
   *   First successful Hub publication time for this immutable release. Backend emits UTC date-time
   *   text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this
@@ -41,11 +46,15 @@ final case class SearchHit(
     @named("base_url")
     baseUrl: Uri,
     description: String,
+    @named("element_count")
+    elementCount: Option[Int] = None,
     formats: Seq[Format],
     keywords: Seq[String] = Seq(),
     licenses: Seq[String],
     name: String,
     namespace: String,
+    @named("native_element_count")
+    nativeElementCount: Option[Int] = None,
     @named("published_at")
     publishedAt: LinkmlDateTime,
     title: String,

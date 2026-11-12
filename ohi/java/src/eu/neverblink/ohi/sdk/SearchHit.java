@@ -28,11 +28,13 @@ import java.util.Objects;
 @JsonPropertyOrder({
     "base_url",
     "description",
+    "element_count",
     "formats",
     "keywords",
     "licenses",
     "name",
     "namespace",
+    "native_element_count",
     "published_at",
     "title",
     "version",
@@ -43,6 +45,9 @@ public class SearchHit {
 
     @JsonProperty("description")
     private String description;
+
+    @JsonProperty("element_count")
+    private Long elementCount;
 
     @JsonProperty("formats")
     private List<Format> formats;
@@ -58,6 +63,9 @@ public class SearchHit {
 
     @JsonProperty("namespace")
     private String namespace;
+
+    @JsonProperty("native_element_count")
+    private Long nativeElementCount;
 
     private OffsetDateTime publishedAt;
 
@@ -87,6 +95,15 @@ public class SearchHit {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /** Number of LinkML elements in the publication. */
+    public Long getElementCount() {
+        return elementCount;
+    }
+
+    public void setElementCount(Long elementCount) {
+        this.elementCount = elementCount;
     }
 
     /**
@@ -141,6 +158,17 @@ public class SearchHit {
     }
 
     /**
+     * Number of elements in the publication's native format, as published upstream, such as the classes and properties of an OWL ontology.
+     */
+    public Long getNativeElementCount() {
+        return nativeElementCount;
+    }
+
+    public void setNativeElementCount(Long nativeElementCount) {
+        this.nativeElementCount = nativeElementCount;
+    }
+
+    /**
      * First successful Hub publication time for this immutable release. Backend emits UTC date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this publication. Not an upstream release date.
      */
     public OffsetDateTime getPublishedAt() {
@@ -185,11 +213,13 @@ public class SearchHit {
         SearchHit other = (SearchHit) o;
         return Objects.equals(baseUrl, other.baseUrl)
             && Objects.equals(description, other.description)
+            && Objects.equals(elementCount, other.elementCount)
             && Objects.equals(formats, other.formats)
             && Objects.equals(keywords, other.keywords)
             && Objects.equals(licenses, other.licenses)
             && Objects.equals(name, other.name)
             && Objects.equals(namespace, other.namespace)
+            && Objects.equals(nativeElementCount, other.nativeElementCount)
             && Objects.equals(publishedAt, other.publishedAt)
             && Objects.equals(title, other.title)
             && Objects.equals(version, other.version)
@@ -198,7 +228,7 @@ public class SearchHit {
 
     @Override
     public int hashCode() {
-        return Objects.hash(baseUrl, description, formats, keywords, licenses, name, namespace, publishedAt, title, version, extraProperties);
+        return Objects.hash(baseUrl, description, elementCount, formats, keywords, licenses, name, namespace, nativeElementCount, publishedAt, title, version, extraProperties);
     }
 
     @Override
@@ -206,11 +236,13 @@ public class SearchHit {
         return "SearchHit{"
             + "baseUrl=" + getBaseUrl()
             + ", description=" + getDescription()
+            + ", elementCount=" + getElementCount()
             + ", formats=" + getFormats()
             + ", keywords=" + getKeywords()
             + ", licenses=" + getLicenses()
             + ", name=" + getName()
             + ", namespace=" + getNamespace()
+            + ", nativeElementCount=" + getNativeElementCount()
             + ", publishedAt=" + getPublishedAt()
             + ", title=" + getTitle()
             + ", version=" + getVersion()
@@ -224,22 +256,26 @@ public class SearchHit {
     private static SearchHit json$create(
             @JsonProperty(value = "base_url", required = true) String baseUrl,
             @JsonProperty(value = "description", required = true) String description,
+            @JsonProperty("element_count") Long elementCount,
             @JsonProperty(value = "formats", required = true) @JsonSetter(contentNulls = Nulls.FAIL) List<Format> formats,
             @JsonProperty("keywords") @JsonSetter(contentNulls = Nulls.FAIL) List<String> keywords,
             @JsonProperty(value = "licenses", required = true) @JsonSetter(contentNulls = Nulls.FAIL) List<String> licenses,
             @JsonProperty(value = "name", required = true) String name,
             @JsonProperty(value = "namespace", required = true) String namespace,
+            @JsonProperty("native_element_count") Long nativeElementCount,
             @JsonProperty(value = "published_at", required = true) Object publishedAt,
             @JsonProperty(value = "title", required = true) String title,
             @JsonProperty(value = "version", required = true) String version) {
         SearchHit json$item = new SearchHit();
         json$item.setBaseUrl(baseUrl);
         json$item.setDescription(description);
+        json$item.setElementCount(elementCount);
         json$item.setFormats(formats);
         json$item.setKeywords(keywords);
         json$item.setLicenses(licenses);
         json$item.setName(name);
         json$item.setNamespace(namespace);
+        json$item.setNativeElementCount(nativeElementCount);
         json$item.setPublishedAt(LinkMLJson.dateTime(publishedAt));
         json$item.setTitle(title);
         json$item.setVersion(version);

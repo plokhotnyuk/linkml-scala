@@ -79,6 +79,32 @@ class CatalogOutputSpec extends AnyWordSpec, Matchers {
       CatalogOutput.publication(publication, json = false) shouldBe expected
     }
 
+    "show the element counts after the description, and equal counts once" in {
+      def render(native: Option[Int], linkml: Option[Int]): String =
+        CatalogOutput.publication(
+          publication.copy(nativeElementCount = native, elementCount = linkml),
+          json = false,
+        )
+      render(Some(95), Some(120)) shouldBe expected.replace(
+        "  Release URL:",
+        "  Elements: 95 native, 120 in LinkML\n  Release URL:",
+      )
+      render(Some(120), Some(120)) should include(
+        "  Description: Synthetic selection metadata\n  Elements: 120\n  Release URL:",
+      )
+      render(None, Some(120)) should include("\n  Elements: 120 in LinkML\n")
+      render(Some(95), None) should include("\n  Elements: 95 native\n")
+    }
+
+    "leave out the elements line when neither element count is known" in {
+      val output = CatalogOutput.publication(
+        publication.copy(nativeElementCount = None, elementCount = None),
+        json = false,
+      )
+      output shouldBe expected
+      output should not include "Elements:"
+    }
+
     "label empty collections without inventing absent optional metadata" in {
       val output = CatalogOutput.publication(
         base.copy(artifacts = Seq.empty, dependencies = Seq.empty),

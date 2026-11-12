@@ -64,6 +64,9 @@ private[cli] object CatalogOutput {
           val prefix = if index == 0 then 15 else 4
           output += styled(line.take(prefix), "2", colored) + line.drop(prefix)
       }
+      CliFormatting.elements(result.nativeElementCount, result.elementCount).foreach(
+        field("Elements", _),
+      )
       field("Release URL", result.baseUrl.original, code = "36")
 
       versions.foreach { case Versions(latest, releases) =>

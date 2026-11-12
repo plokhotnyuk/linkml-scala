@@ -20,6 +20,8 @@ import eu.neverblink.linkml.runtime.*
   *   dependencies.
   * @param description
   *   Short description of the ontology's domain and intended use.
+  * @param elementCount
+  *   Number of LinkML elements in the publication.
   * @param keywords
   *   Keywords describing the ontology's subject. An empty list means no keywords are provided.
   * @param licenses
@@ -33,6 +35,9 @@ import eu.neverblink.linkml.runtime.*
   * @param namespaceIri
   *   Optional preferred primary RDF term namespace. Preserve the complete value including any
   *   trailing delimiter. Not the catalog namespace and not necessarily the ontology IRI.
+  * @param nativeElementCount
+  *   Number of elements in the publication's native format, as published upstream, such as the
+  *   classes and properties of an OWL ontology.
   * @param preferredPrefix
   *   Optional abbreviation for namespace_iri, without whitespace or a colon. Requires
   *   namespace_iri. This constraint does not certify prefix syntax for every ontology language.
@@ -59,12 +64,16 @@ final case class Publication(
     baseUrl: Uri,
     dependencies: Seq[Dependency],
     description: String,
+    @named("element_count")
+    elementCount: Option[Int] = None,
     keywords: Seq[String],
     licenses: Seq[String],
     name: String,
     namespace: String,
     @named("namespace_iri")
     namespaceIri: Option[Uri] = None,
+    @named("native_element_count")
+    nativeElementCount: Option[Int] = None,
     @named("preferred_prefix")
     preferredPrefix: Option[String] = None,
     @named("published_at")

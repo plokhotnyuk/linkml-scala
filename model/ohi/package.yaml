@@ -26,6 +26,8 @@ classes:
     - licenses
     - published_at
     - keywords
+    - element_count
+    - native_element_count
     slot_usage:
       keywords:
         required: true

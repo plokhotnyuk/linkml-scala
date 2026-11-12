@@ -71,6 +71,39 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
         SearchOutput.render(result, columns, colored = false) shouldBe expected
       }
 
+    "show both element counts after the formats, the native count first" in {
+      val input = result.copy(hits =
+        Seq(collections.copy(elementCount = Some(120), nativeElementCount = Some(95))),
+      )
+      SearchOutput.render(input, 80, colored = false) should include(
+        "  Formats: linkml-yaml, ossie-yaml, owl-rdfxml, owl-turtle, rdfs-turtle\n" +
+          "  Elements: 95 native, 120 in LinkML\n",
+      )
+      SearchOutput.render(input, 80, colored = true) should include(
+        "\u001b[2m  Elements: \u001b[0m\u001b[0m95 native, 120 in LinkML\u001b[0m",
+      )
+    }
+
+    "show only the element count that is present" in {
+      def elements(hit: SearchHit): Seq[String] =
+        SearchOutput
+          .render(result.copy(hits = Seq(hit)), 80, colored = false)
+          .linesIterator
+          .filter(_.startsWith("  Elements:"))
+          .toSeq
+      elements(collections.copy(elementCount = Some(0))) shouldBe Seq("  Elements: 0 in LinkML")
+      elements(collections.copy(nativeElementCount = Some(7))) shouldBe Seq("  Elements: 7 native")
+      elements(collections) shouldBe empty
+    }
+
+    "show equal element counts once, as for an ontology published in LinkML" in {
+      val input = result.copy(hits =
+        Seq(collections.copy(elementCount = Some(120), nativeElementCount = Some(120))),
+      )
+      val lines = SearchOutput.render(input, 80, colored = false).linesIterator.toSeq
+      lines.filter(_.startsWith("  Elements:")) shouldBe Seq("  Elements: 120")
+    }
+
     "move a word intact to the continuation when only the label fits" in {
       val input = result.copy(hits = Seq(collections.copy(description = "abcdefghij")))
       SearchOutput.render(input, 20, colored = false) should include(

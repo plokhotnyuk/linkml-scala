@@ -32,11 +32,13 @@ import java.util.Objects;
     "base_url",
     "dependencies",
     "description",
+    "element_count",
     "keywords",
     "licenses",
     "name",
     "namespace",
     "namespace_iri",
+    "native_element_count",
     "preferred_prefix",
     "published_at",
     "publisher",
@@ -57,6 +59,9 @@ public class Publication {
     @JsonProperty("description")
     private String description;
 
+    @JsonProperty("element_count")
+    private Long elementCount;
+
     @JsonProperty("keywords")
     private List<String> keywords;
 
@@ -71,6 +76,9 @@ public class Publication {
 
     @JsonProperty("namespace_iri")
     private String namespaceIri;
+
+    @JsonProperty("native_element_count")
+    private Long nativeElementCount;
 
     @JsonProperty("preferred_prefix")
     private String preferredPrefix;
@@ -133,6 +141,15 @@ public class Publication {
         this.description = description;
     }
 
+    /** Number of LinkML elements in the publication. */
+    public Long getElementCount() {
+        return elementCount;
+    }
+
+    public void setElementCount(Long elementCount) {
+        this.elementCount = elementCount;
+    }
+
     /** Keywords describing the ontology's subject. An empty list means no keywords are provided. */
     public List<String> getKeywords() {
         return keywords;
@@ -182,6 +199,17 @@ public class Publication {
 
     public void setNamespaceIri(String namespaceIri) {
         this.namespaceIri = namespaceIri;
+    }
+
+    /**
+     * Number of elements in the publication's native format, as published upstream, such as the classes and properties of an OWL ontology.
+     */
+    public Long getNativeElementCount() {
+        return nativeElementCount;
+    }
+
+    public void setNativeElementCount(Long nativeElementCount) {
+        this.nativeElementCount = nativeElementCount;
     }
 
     /**
@@ -262,11 +290,13 @@ public class Publication {
             && Objects.equals(baseUrl, other.baseUrl)
             && Objects.equals(dependencies, other.dependencies)
             && Objects.equals(description, other.description)
+            && Objects.equals(elementCount, other.elementCount)
             && Objects.equals(keywords, other.keywords)
             && Objects.equals(licenses, other.licenses)
             && Objects.equals(name, other.name)
             && Objects.equals(namespace, other.namespace)
             && Objects.equals(namespaceIri, other.namespaceIri)
+            && Objects.equals(nativeElementCount, other.nativeElementCount)
             && Objects.equals(preferredPrefix, other.preferredPrefix)
             && Objects.equals(publishedAt, other.publishedAt)
             && Objects.equals(publisher, other.publisher)
@@ -278,7 +308,7 @@ public class Publication {
 
     @Override
     public int hashCode() {
-        return Objects.hash(artifacts, baseUrl, dependencies, description, keywords, licenses, name, namespace, namespaceIri, preferredPrefix, publishedAt, publisher, schemaVersion, title, version, extraProperties);
+        return Objects.hash(artifacts, baseUrl, dependencies, description, elementCount, keywords, licenses, name, namespace, namespaceIri, nativeElementCount, preferredPrefix, publishedAt, publisher, schemaVersion, title, version, extraProperties);
     }
 
     @Override
@@ -288,11 +318,13 @@ public class Publication {
             + ", baseUrl=" + getBaseUrl()
             + ", dependencies=" + getDependencies()
             + ", description=" + getDescription()
+            + ", elementCount=" + getElementCount()
             + ", keywords=" + getKeywords()
             + ", licenses=" + getLicenses()
             + ", name=" + getName()
             + ", namespace=" + getNamespace()
             + ", namespaceIri=" + getNamespaceIri()
+            + ", nativeElementCount=" + getNativeElementCount()
             + ", preferredPrefix=" + getPreferredPrefix()
             + ", publishedAt=" + getPublishedAt()
             + ", publisher=" + getPublisher()
@@ -311,11 +343,13 @@ public class Publication {
             @JsonProperty(value = "base_url", required = true) String baseUrl,
             @JsonProperty(value = "dependencies", required = true) @JsonSetter(contentNulls = Nulls.FAIL) List<Dependency> dependencies,
             @JsonProperty(value = "description", required = true) String description,
+            @JsonProperty("element_count") Long elementCount,
             @JsonProperty(value = "keywords", required = true) @JsonSetter(contentNulls = Nulls.FAIL) List<String> keywords,
             @JsonProperty(value = "licenses", required = true) @JsonSetter(contentNulls = Nulls.FAIL) List<String> licenses,
             @JsonProperty(value = "name", required = true) String name,
             @JsonProperty(value = "namespace", required = true) String namespace,
             @JsonProperty("namespace_iri") String namespaceIri,
+            @JsonProperty("native_element_count") Long nativeElementCount,
             @JsonProperty("preferred_prefix") String preferredPrefix,
             @JsonProperty(value = "published_at", required = true) Object publishedAt,
             @JsonProperty(value = "publisher", required = true) String publisher,
@@ -327,11 +361,13 @@ public class Publication {
         json$item.setBaseUrl(baseUrl);
         json$item.setDependencies(dependencies);
         json$item.setDescription(description);
+        json$item.setElementCount(elementCount);
         json$item.setKeywords(keywords);
         json$item.setLicenses(licenses);
         json$item.setName(name);
         json$item.setNamespace(namespace);
         json$item.setNamespaceIri(namespaceIri);
+        json$item.setNativeElementCount(nativeElementCount);
         json$item.setPreferredPrefix(preferredPrefix);
         json$item.setPublishedAt(LinkMLJson.dateTime(publishedAt));
         json$item.setPublisher(publisher);

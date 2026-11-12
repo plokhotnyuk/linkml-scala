@@ -69,6 +69,8 @@ classes:
     - licenses
     - published_at
     - keywords
+    - element_count
+    - native_element_count
     attributes:
       formats:
         description: Formats of the publication's available artifacts. Each value identifies both the

@@ -241,6 +241,8 @@ class Publication(LinkMLModel):
     """Complete set of direct and indirect runtime dependency publications, excluding this publication. Each base_url occurs once. An empty list means this publication has no runtime dependencies."""
     description: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
     """Short description of the ontology's domain and intended use."""
+    element_count: Annotated[StrictInt, Field(ge=0)] | None = None
+    """Number of LinkML elements in the publication."""
     keywords: list[str]
     """Keywords describing the ontology's subject. An empty list means no keywords are provided."""
     licenses: list[Annotated[str, Field(pattern=r"^[\s\S]*\S")]]
@@ -251,6 +253,8 @@ class Publication(LinkMLModel):
     """Namespace qualifying the ontology name, such as w3c in w3c/prov-o."""
     namespace_iri: str | None = None
     """Optional preferred primary RDF term namespace. Preserve the complete value including any trailing delimiter. Not the catalog namespace and not necessarily the ontology IRI."""
+    native_element_count: Annotated[StrictInt, Field(ge=0)] | None = None
+    """Number of elements in the publication's native format, as published upstream, such as the classes and properties of an OWL ontology."""
     preferred_prefix: Annotated[str, Field(pattern=r"^[^\s:]+(?![\s\S])")] | None = None
     """Optional abbreviation for namespace_iri, without whitespace or a colon. Requires namespace_iri. This constraint does not certify prefix syntax for every ontology language."""
     published_at: JsonDateTime
@@ -274,6 +278,8 @@ class SearchHit(LinkMLModel):
     """Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename."""
     description: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
     """Short description of the ontology's domain and intended use."""
+    element_count: Annotated[StrictInt, Field(ge=0)] | None = None
+    """Number of LinkML elements in the publication."""
     formats: list[Format] = Field(min_length=1)
     """Formats of the publication's available artifacts. Each value identifies both the ontology language and serialization syntax, as in artifact.format."""
     keywords: list[str] | None = None
@@ -284,6 +290,8 @@ class SearchHit(LinkMLModel):
     """Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases."""
     namespace: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
     """Namespace qualifying the ontology name, such as w3c in w3c/prov-o."""
+    native_element_count: Annotated[StrictInt, Field(ge=0)] | None = None
+    """Number of elements in the publication's native format, as published upstream, such as the classes and properties of an OWL ontology."""
     published_at: JsonDateTime
     """First successful Hub publication time for this immutable release. Backend emits UTC date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this publication. Not an upstream release date."""
     title: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
