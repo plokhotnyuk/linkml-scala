@@ -10,7 +10,6 @@ import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
 import java.lang
-import scala.collection.mutable
 
 final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   import ScalaGenerator.*
@@ -459,57 +458,15 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     }
   }
 
-  /** The version of a slot that sets the wrapper of its field: `Option`, `Seq`, `Map` or none.
-    *
-    * A field has to override the `def`s of its parents. So all classes linked by inheritance that
-    * have the slot use the same wrapper, from the topmost classes among them. A `slot_usage` below
-    * them that makes the slot required or single-valued doesn't change the wrapper, as for other
-    * changes of the number of values. When the topmost classes give different wrappers, such as two
-    * mixins of a class, they all use the slot as its definition gives it, before any `slot_usage`.
+  /** The version of a slot that sets the wrapper of its field: `Option`, `Seq`, `Map` or none. A
+    * field has to override the `def`s of its parents, so a `slot_usage` that makes the slot
+    * required or single-valued doesn't change the wrapper, as for other changes of the number of
+    * values.
     */
-  private def shapeOf(attribute: AttributeView): SlotView = {
-    val name = attribute.slotView.name
-    val byClass = slotShapes.getOrElseUpdate(name, shapesOf(name))
-    byClass.getOrElse(attribute.definingClassView.name, attribute.slotView)
-  }
+  private def shapeOf(attribute: AttributeView): SlotView =
+    slotShapes.of(attribute.definingClassView, attribute.slotView.name)
 
-  /** The results of [[shapesOf]], by slot name. */
-  private val slotShapes = mutable.HashMap.empty[String, collection.Map[String, SlotView]]
-
-  /** The version of a slot that sets the wrapper of its field in each class that has the slot, by
-    * class name. See [[shapeOf]].
-    */
-  private def shapesOf(name: String): collection.Map[String, SlotView] = {
-    val result = mutable.HashMap.empty[String, SlotView]
-    sv.classes.values.foreach { start =>
-      if (!result.contains(start.name) && start.derivedAttributes.contains(name)) {
-        // The classes with the slot that inheritance links to `start`
-        val group = mutable.ArrayBuffer(start)
-        val seen = mutable.HashSet(start.name)
-        def visit(cls: ClassView): Unit =
-          if (cls.derivedAttributes.contains(name) && seen.add(cls.name)) group.addOne(cls)
-        var i = 0
-        while (i < group.size) {
-          val cls = group(i)
-          cls.parents.foreach(visit)
-          cls.children.foreach(visit)
-          i += 1
-        }
-        var shape: SlotView = null
-        var same = true
-        group.foreach { cls =>
-          if (!cls.parents.exists(_.derivedAttributes.contains(name))) {
-            val own = cls.derivedAttributes(name)
-            if (shape eq null) shape = own
-            else if (InlineType(shape) != InlineType(own)) same = false
-          }
-        }
-        if (!same) shape = start.definedSlot(name).getOrElseFast(shape)
-        group.foreach(cls => result.update(cls.name, shape))
-      }
-    }
-    result
-  }
+  private val slotShapes = new SlotShapes((a, b) => InlineType(a) == InlineType(b))
 
   /** The Scala type of the `def` of a field, without its wrapper. An inlined class uses its
     * interface, not its case class, so that a subclass can narrow the range to a subclass.
