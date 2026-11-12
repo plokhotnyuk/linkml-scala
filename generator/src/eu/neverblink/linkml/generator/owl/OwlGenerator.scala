@@ -839,11 +839,19 @@ object OwlGenerator {
           namedAsInverse.getOrElseUpdate(i.value, mutable.ArrayBuffer.empty).addOne(s)
         }
       }
-      val found = mutable.HashSet.empty[SlotView]
+      // Keyed by slot name, which is unique in the schema view. Hashing a SlotView hashes the whole
+      // schema it was defined in.
+      val found = mutable.HashSet.empty[String]
       val pending = mutable.ArrayBuffer.empty[SlotView]
+      val b = Set.newBuilder[String]
 
       def addWithAncestors(s: SlotView): Unit =
-        s.ancestorsWithSelf.foreach(a => if (found.add(a)) pending.addOne(a))
+        s.ancestorsWithSelf.foreach { a =>
+          if (found.add(a.slot.name)) {
+            pending.addOne(a)
+            b.addOne(a.uriStr)
+          }
+        }
 
       sv.slotDefinitions.foreachEntry((_, s) => if (s.slot.transitive) addWithAncestors(s))
       // Add the inverses of each slot found, with their ancestors, until no new slot is found.
@@ -854,8 +862,6 @@ object OwlGenerator {
         )
         namedAsInverse.get(s.slot.name).foreachFast(_.foreach(addWithAncestors))
       }
-      val b = Set.newBuilder[String]
-      found.foreach(s => b.addOne(s.uriStr))
       b.result()
     }
 

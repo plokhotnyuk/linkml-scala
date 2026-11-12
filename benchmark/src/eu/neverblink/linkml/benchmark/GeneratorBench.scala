@@ -2,6 +2,7 @@ package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.generator.options.{PruningMode, StatsGeneratorOptions}
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
+import eu.neverblink.linkml.cli.ValidationReport
 import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
@@ -19,6 +20,7 @@ import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.schemaview.SchemaIssues
+import eu.neverblink.linkml.schemaview.SchemaValidator
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
 import org.openjdk.jmh.infra.Blackhole
@@ -264,6 +266,15 @@ class GeneratorBench extends CommonParams {
         new BlackholeOutputStream(bh),
         StatsGeneratorOptions(pruningMode = PruningMode.Skip),
       )
+
+  /** Lints the schema and writes the JSON report, as `linkml lint --format json` does. */
+  @Benchmark
+  def lintFromYaml(bh: Blackhole): Unit = {
+    val issues = SchemaValidator(using
+      SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
+    ).lintProblems
+    bh.consume(ValidationReport.renderAll(Seq(schema -> issues), ValidationReport.Format.Json))
+  }
 
   /** Writes the document with default options to the blackhole, as the CLI writes it to a file. */
   private def write(bh: Blackhole, generator: DocumentGenerator[?]): Unit =

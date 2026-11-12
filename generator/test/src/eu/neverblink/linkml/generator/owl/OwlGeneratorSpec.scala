@@ -207,6 +207,41 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms should not contain Characteristic(ns + "friends", PropertyCharacteristic.Functional)
     }
 
+    "state no functional or cardinality axioms on transitive slots, their parents and inverses" in {
+      val axioms = ontologyOf("""
+        |classes:
+        |  Part:
+        |    slots:
+        |      - partOf
+        |      - related
+        |      - hasPart
+        |      - owner
+        |slots:
+        |  related:
+        |    range: Part
+        |  partOf:
+        |    is_a: related
+        |    range: Part
+        |    transitive: true
+        |  hasPart:
+        |    range: Part
+        |    inverse: partOf
+        |  owner:
+        |    range: Part
+        |""").axioms
+      val nonSimple = Seq("partOf", "related", "hasPart").map(ns + _)
+      nonSimple.foreach { iri =>
+        axioms should not contain Characteristic(iri, PropertyCharacteristic.Functional)
+      }
+      axioms.collect {
+        case SubClassOf(_, x: Cardinality, _) if nonSimple.contains(x.property.iri) => x
+      } shouldBe empty
+      axioms should contain allOf (
+        Characteristic(ns + "owner", PropertyCharacteristic.Functional),
+        SubClassOf(c("Part"), Cardinality(Bound.Max, 1, PropertyRef(ns + "owner"))),
+      )
+    }
+
     "write lengths as xsd:minLength and xsd:maxLength facets" in {
       val axioms = ontologyOf("""
         |slots:
