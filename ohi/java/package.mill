@@ -42,8 +42,9 @@ object `package` extends JavaModule, GitVersionPublishModule {
   )
 
   object test extends JavaTests, TestModule.Junit5 {
-    def mvnDeps = Seq(mvn"org.junit.jupiter:junit-jupiter:5.11.3")
+    def mvnDeps = Seq(mvn"org.junit.jupiter:junit-jupiter:5.11.4")
 
-    def forkEnv = super.forkEnv() ++ Map("OHI_EXAMPLES" -> (build.ohi.moduleDir / "examples").toString)
+    def forkEnv =
+      super.forkEnv() ++ Map("OHI_EXAMPLES" -> (build.ohi.moduleDir / "examples").toString)
   }
 }
