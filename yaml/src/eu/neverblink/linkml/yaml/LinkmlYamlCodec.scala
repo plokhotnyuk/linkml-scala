@@ -244,6 +244,42 @@ object LinkmlYamlCodec {
     n.asInstanceOf[Node.MappingNode].mappings.keys
       .find(k => kvs.containsKey(k.asInstanceOf[Node.ScalarNode].value)).get,
   )
+
+  /** Checks that each value of a compact dict is a map or null. Rejects a bare value, which only
+    * the simple dict form allows.
+    */
+  def checkCompactDict(node: Node): Unit = node match {
+    case n: Node.MappingNode =>
+      val values = n.mappings.valuesIterator
+      while (values.hasNext) {
+        values.next() match {
+          case _: Node.MappingNode =>
+          case v: Node.ScalarNode if Tag.nullTag eq v.tag =>
+          case v => decodeError("map or null value", v)
+        }
+      }
+    case _ =>
+  }
+
+  /** Writes each bare value of a compact dict as a map with one field, `valueName`. Returns the
+    * node unchanged if it has no bare values.
+    */
+  def expandBareValues(node: Node, valueName: String): Node = node match {
+    case n: Node.MappingNode if n.mappings.valuesIterator.exists(isBareValue) =>
+      val name = Node.ScalarNode(valueName)
+      Node.MappingNode(n.mappings.map { kv =>
+        val v = kv._2
+        if (isBareValue(v)) (kv._1, Node.MappingNode(ListMap((name, v))))
+        else kv
+      })
+    case _ => node
+  }
+
+  private def isBareValue(node: Node): Boolean = node match {
+    case _: Node.MappingNode => false
+    case n: Node.ScalarNode => Tag.nullTag ne n.tag
+    case _ => true
+  }
 }
 
 private object LinkmlYamlCodecImpl {
@@ -666,6 +702,44 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         }
     }
 
+  /** Name of the `@value` field of the objects in a `@compactDict` field, or null if there is none.
+    * The codec of such objects reads and writes them as bare values too, which a compact dict
+    * doesn't allow.
+    */
+  private def compactDictValueName(fieldInfo: FieldInfo): String = {
+    val tpe = fieldInfo.resolvedTpe
+    if (fieldInfo.kind == FieldKind.CompactDict && tpe <:< mapOfWildcardsTpe) {
+      val vTpe = typeArg2(tpe)
+      if (!isUnion(vTpe) && isNonAbstractClass(vTpe)) {
+        getClassInfo(vTpe).fields.find(_.kind == FieldKind.Value).mapFast(_.mappedName).orNullFast
+      } else null
+    } else null
+  }
+
+  private def genDecodeField[T: Type](
+      fieldInfo: FieldInfo,
+      node: Expr[Node],
+      prefixes: Expr[PrefixMap],
+  )(using Quotes): Expr[T] = {
+    val decoded = genDecode[T](fieldInfo.resolvedTpe, node, '{ None }, prefixes)
+    if (compactDictValueName(fieldInfo) eq null) decoded
+    else '{ LinkmlYamlCodec.checkCompactDict($node); $decoded }
+  }
+
+  private def genEncodeField[T: Type](
+      fieldInfo: FieldInfo,
+      x: Expr[T],
+      prefixes: Expr[PrefixMap],
+  )(using Quotes): Expr[Node] = {
+    val kind = fieldInfo.kind
+    // The objects in a dict get their key from the dict, so they don't repeat it
+    val skipId = Expr(kind == FieldKind.SimpleDict || kind == FieldKind.CompactDict)
+    val encoded = genEncode[T](fieldInfo.resolvedTpe, x, skipId, prefixes)
+    val valueName = compactDictValueName(fieldInfo)
+    if (valueName eq null) encoded
+    else '{ LinkmlYamlCodec.expandBareValues($encoded, ${ Expr(valueName) }) }
+  }
+
   private def genDecodeNonAbstractClass[T: Type](
       tpe: TypeRepr,
       node: Expr[Node],
@@ -762,7 +836,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                     val assign =
                       Assign(
                         Ref(valDef.symbol),
-                        genDecode[ft](fTpe, 'v, '{ None }, prefixes).asTerm,
+                        genDecodeField[ft](fieldInfo, 'v, prefixes).asTerm,
                       ).asExpr
                     // A class inlined in a dict has its id written twice: as the enclosing key and,
                     // optionally, as a field of its own body. We raise an error if the two disagree.
@@ -816,7 +890,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       val fTpe = fieldInfo.resolvedTpe
       fTpe.asType match {
         case '[ft] =>
-          classInfo.genNew(List(List(genDecode[ft](fTpe, node, '{ None }, prefixes).asTerm))).asExpr
+          classInfo.genNew(List(List(genDecodeField[ft](fieldInfo, node, prefixes).asTerm))).asExpr
       }
     } else {
       val valFieldInfoIndex = fields.indexWhere(_.kind == FieldKind.Value)
@@ -911,14 +985,11 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         fields.map { fieldInfo =>
           val fTpe = fieldInfo.resolvedTpe
           val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
-          val fSkipId = Expr(
-            fieldInfo.kind == FieldKind.SimpleDict || fieldInfo.kind == FieldKind.CompactDict,
-          )
           val name = Expr(fieldInfo.mappedName)
           (fTpe.asType match {
             case '[ft] =>
               val encodeVal =
-                genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
+                genEncodeField[ft](fieldInfo, getter.asInstanceOf[Expr[ft]], prefixes)
               fieldInfo.defaultValue match {
                 // '@serializeDefault' fields carry a meaningful default (e.g. from 'ifabsent'),
                 // so they are written out even when they still hold it.
@@ -959,10 +1030,8 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       val fieldInfo = fields.head
       val fTpe = fieldInfo.resolvedTpe
       val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
-      val fSkipId =
-        Expr(fieldInfo.kind == FieldKind.SimpleDict || fieldInfo.kind == FieldKind.CompactDict)
       fTpe.asType match {
-        case '[ft] => genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
+        case '[ft] => genEncodeField[ft](fieldInfo, getter.asInstanceOf[Expr[ft]], prefixes)
       }
     } else if (
       fields.exists(_.kind == FieldKind.Id) &&

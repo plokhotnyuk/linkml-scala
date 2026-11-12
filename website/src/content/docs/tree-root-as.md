@@ -50,11 +50,12 @@ The package has a document class if the tree root is a list or a dict (`tree_roo
 
 For a schema named `some_schema`:
 
-| `tree_root_as`                 | Document type                                  |
-|--------------------------------|------------------------------------------------|
-| `optional`                     | `type SomeSchemaDocument = Option[X]`          |
-| `list`                         | `type SomeSchemaDocument = Seq[X]`             |
-| `compact_dict`, `simple_dict`  | `type SomeSchemaDocument = Map[String, X]`     |
+| `tree_root_as` | Document type                                                               |
+|----------------|-----------------------------------------------------------------------------|
+| `optional`     | `type SomeSchemaDocument = Option[X]`                                       |
+| `list`         | `type SomeSchemaDocument = Seq[X]`                                          |
+| `compact_dict` | `final case class SomeSchemaDocument(@compactDict entries: Map[String, X])` |
+| `simple_dict`  | `final case class SomeSchemaDocument(@simpleDict entries: Map[String, X])`  |
 
 `X` is the class that holds the instances:
 
@@ -85,6 +86,7 @@ An empty list or dict is written as an empty text, and `parseYaml` fails on an e
 check for that before you decode, for example with `if text.isBlank then Seq.empty` for a
 `list` document.
 
-In the dict forms, the codec reads the key of each object from its dict key. Write documents
-with `encode` without `skipId`. With `skipId = true`, an object with a key and one other slot
-is written as a bare value, which `compact_dict` doesn't accept.
+In the dict forms, the document class is written as its `entries` alone, and the codec reads
+the key of each object from its dict key. The field annotation sets the dict form: with
+`@compactDict`, each object is a map, so a bare value is rejected. With `@simpleDict`, an object
+with a key and one other slot is written as a bare value.

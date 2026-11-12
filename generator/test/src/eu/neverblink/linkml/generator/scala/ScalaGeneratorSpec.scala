@@ -163,10 +163,13 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         )
       }
 
-      "compact_dict and simple_dict: a Map by key" in {
-        Seq("compact_dict", "simple_dict").foreach { form =>
-          document(form) should include("type TestDocument = Map[String, Item]\n")
-        }
+      "compact_dict and simple_dict: a class with a Map by key, marked with the dict form" in {
+        document("compact_dict") should include(
+          "@flatten\nfinal case class TestDocument(@compactDict entries: Map[String, Item])\n",
+        )
+        document("simple_dict") should include(
+          "@flatten\nfinal case class TestDocument(@simpleDict entries: Map[String, Item])\n",
+        )
       }
 
       "of the implementation when the class has an interface" in {

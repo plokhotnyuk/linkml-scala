@@ -758,6 +758,30 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |    ^""".stripMargin,
       )
     }
+    "decode and encode compact dictionaries of classes with an '@value' field as maps only" in {
+      case class Entry(@id k: String, @value v: String, c: Option[String] = None)
+
+      @flatten case class CompactDict(@compactDict entries: Map[String, Entry])
+          derives LinkmlYamlCodec
+
+      @flatten case class SimpleDict(@simpleDict entries: Map[String, Entry])
+          derives LinkmlYamlCodec
+
+      roundTrip(
+        CompactDict(Map("a" -> Entry("a", "x"), "b" -> Entry("b", "y", Some("z")))),
+        "a:\n  v: x\nb:\n  v: y\n  c: z\n",
+      )
+      decodeError[CompactDict](
+        "a:\n  v: x\nb: y\n",
+        """Expected map or null value at 2:3 but got:
+          |b: y
+          |   ^""".stripMargin,
+      )
+      roundTrip(
+        SimpleDict(Map("a" -> Entry("a", "x"), "b" -> Entry("b", "y", Some("z")))),
+        "a: x\nb:\n  v: y\n  c: z\n",
+      )
+    }
     "decode and encode case classes with expanded dictionaries" in {
       case class DictEntry(@id k: String)(
           val v: Int,

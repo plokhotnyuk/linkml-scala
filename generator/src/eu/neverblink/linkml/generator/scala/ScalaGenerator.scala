@@ -110,8 +110,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     files.result()
   }
 
-  /** Generates the file with the type of a whole document: an `Option`, `Seq` or `Map` of the class
-    * that holds the tree root's instances. `LinkmlYamlCodec.derived` reads and writes it.
+  /** Generates the file with the type of a whole document: an `Option` or `Seq` of the class that
+    * holds the tree root's instances, or a class with one `Map` field of them, marked with the dict
+    * form. `LinkmlYamlCodec.derived` reads and writes it.
     *
     * @param name
     *   the name of the document type
@@ -131,7 +132,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case _: InlineType.plain.type => return null
       case _: InlineType.optional.type => "Option["
       case _: InlineType.list.type => "Seq["
-      case _ => "Map[String, "
+      case _ => null
     }
     // The codec can read the interface only if it has `@typeDesignator`
     val element =
@@ -139,11 +140,23 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       else if (typeDesignatorAnnotation(root, options).isDefined) className(root)
       else if (root.isConcrete) implName(root, options)
       else return null
-    val sb = new java.lang.StringBuilder(128)
-    sb.append("package ").append(options.`package`).append("\n\n/** ")
-      .append(TreeRootDocument.description(root, inlineType)).append(" */\ntype ")
-      .append(name).append(" = ").append(collection)
-      .append(element).append("]\n").toString
+    val sb = new java.lang.StringBuilder(256)
+    sb.append("package ").append(options.`package`).append("\n\n")
+    if (collection eq null) sb.append("import eu.neverblink.linkml.runtime.*\n\n")
+    sb.append("/** ").append(TreeRootDocument.description(root, inlineType)).append(" */\n")
+    if (collection ne null) {
+      sb.append("type ").append(name).append(" = ").append(collection).append(element)
+        .append("]\n")
+    } else {
+      // A type alias of a `Map` can't say which dict form to read and write, but a field can
+      val form = inlineType match {
+        case d: InlineType.dict if d.form.isInstanceOf[CollectionForm.SimpleDict] => "@simpleDict"
+        case _ => "@compactDict"
+      }
+      sb.append("@flatten\nfinal case class ").append(name).append('(').append(form)
+        .append(" entries: Map[String, ").append(element).append("])\n")
+    }
+    sb.toString
   }
 
   /** Generate Scala counterparts of LinkML classes: case class implementations for instantiable
