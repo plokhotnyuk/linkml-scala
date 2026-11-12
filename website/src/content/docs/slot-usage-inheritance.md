@@ -117,6 +117,9 @@ A class can only narrow an inherited slot. `validate` reports an error for a cla
 - a range that is not derived from the parent's range (`UnrelatedSlotRange`)
 - a cardinality that allows more values, or requires fewer values, than the parent's, for example `multivalued: true` on a single-valued slot (`WiderSlotCardinality`)
 
+A slot has both `exact_cardinality` and a minimum or maximum when a class sets one and inherits the other.
+The OWL generator reads `exact_cardinality` first and the other generators read the minimum and maximum first, so `validate` checks both.
+
 The generators don't support such schemas, so their output may not work.
 
 Some outputs pass what a parent class says about a field down to its subclasses: GraphQL interfaces, Scala abstract classes and traits, Pydantic classes, and OWL class restrictions.

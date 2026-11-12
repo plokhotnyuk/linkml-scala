@@ -624,73 +624,142 @@ final class SchemaValidator(using sv: SchemaView) {
       val cls = sv.classes(className)
       val parents = cls.parents
       if (parents.nonEmpty) {
-        val names = cls.derivedAttributes.keysIterator.toArray
-        java.util.Arrays.sort(names, Ordering.String)
-        names.foreach { name =>
-          val own = cls.derivedAttributes(name)
-          val pointer =
-            if (cls.cls.slotUsage.contains(name)) s"/classes/$className/slot_usage/$name"
-            else if (cls.cls.attributes.contains(name)) s"/classes/$className/attributes/$name"
-            else s"/classes/$className"
-          val rangeParent = parents.iterator.find { p =>
-            val inherited = p.derivedAttributes.getOrElse(name, null)
-            (inherited ne null) && (own ne inherited) && !own.hasRangeDerivedFrom(inherited)
-          }.orNullFast
-          if (rangeParent ne null) {
-            errors.addOne(
-              new UnrelatedSlotRange(
-                location = at(pointer, schemaId),
-                className = className,
-                slotName = name,
-                slotRange = rangeNames(own),
-                parentName = rangeParent.name,
-                parentRange = rangeNames(rangeParent.derivedAttributes(name)),
-              ),
-            )
+        val derived = cls.derivedAttributes
+        var names: Array[String] = null
+        var count = 0
+        // Collect the slots that can differ from a parent. With one parent, these are the slots
+        // that the class changes with `slot_usage` or `attributes`. With more parents, merging
+        // them can change a slot that the class or any ancestor changes.
+        if (parents.lengthCompare(1) == 0) {
+          val usage = cls.cls.slotUsage
+          val attributes = cls.cls.attributes
+          names = new Array[String](usage.size + attributes.size)
+          usage.foreachEntry { (name, _) =>
+            if (derived.contains(name)) {
+              names(count) = name
+              count += 1
+            }
           }
-          val ownMin = minValues(own.slot)
-          val ownMax = maxValues(own.slot)
-          val cardinalityParent = parents.iterator.find { p =>
-            val inherited = p.derivedAttributes.getOrElse(name, null)
-            (inherited ne null) && (own ne inherited) &&
-            (ownMin < minValues(inherited.slot) || ownMax > maxValues(inherited.slot))
-          }.orNullFast
-          if (cardinalityParent ne null) {
-            errors.addOne(
-              new WiderSlotCardinality(
-                location = at(pointer, schemaId),
-                className = className,
-                slotName = name,
-                slotCardinality = cardinality(own.slot),
-                parentName = cardinalityParent.name,
-                parentCardinality = cardinality(cardinalityParent.derivedAttributes(name).slot),
-              ),
-            )
+          attributes.foreachEntry { (name, _) =>
+            if (derived.contains(name) && !usage.contains(name)) {
+              names(count) = name
+              count += 1
+            }
           }
+        } else {
+          val changes = cls.slotChanges
+          names = new Array[String](changes.size)
+          changes.foreachEntry { (name, _) =>
+            if (derived.contains(name)) {
+              names(count) = name
+              count += 1
+            }
+          }
+        }
+        util.Arrays.sort(names, 0, count, Ordering.String)
+        var i = 0
+        while (i < count) {
+          val name = names(i)
+          val own = derived(name)
+          var location: IssueLocation = null
+          var rangeReported = false
+          var cardinalityReported = false
+          parents.foreach { parent =>
+            val inherited = parent.derivedAttributes.getOrElse(name, null)
+            // A slot that no class changes is the same object in the class and the parent
+            if ((inherited ne null) && (own ne inherited)) {
+              if (!rangeReported && !own.hasRangeDerivedFrom(inherited)) {
+                rangeReported = true
+                if (location eq null) location = slotLocation(className, cls, name, schemaId)
+                errors.addOne(
+                  new UnrelatedSlotRange(
+                    location = location,
+                    className = className,
+                    slotName = name,
+                    slotRange = rangeNames(own),
+                    parentName = parent.name,
+                    parentRange = rangeNames(inherited),
+                  ),
+                )
+              }
+              if (!cardinalityReported) {
+                val exactFirst = !isWider(own.slot, inherited.slot, exactFirst = false)
+                if (!exactFirst || isWider(own.slot, inherited.slot, exactFirst = true)) {
+                  cardinalityReported = true
+                  if (location eq null) location = slotLocation(className, cls, name, schemaId)
+                  errors.addOne(
+                    new WiderSlotCardinality(
+                      location = location,
+                      className = className,
+                      slotName = name,
+                      slotCardinality = cardinality(own.slot, exactFirst),
+                      parentName = parent.name,
+                      parentCardinality = cardinality(inherited.slot, exactFirst),
+                    ),
+                  )
+                }
+              }
+            }
+          }
+          i += 1
         }
       }
     }
     errors.result()
   }
 
+  /** Where a class changes a slot: its `slot_usage` or `attributes` entry, or else the class. */
+  private def slotLocation(
+      className: String,
+      cls: ClassView,
+      name: String,
+      schemaId: Uri,
+  ): IssueLocation = {
+    val pointer =
+      if (cls.cls.slotUsage.contains(name)) s"/classes/$className/slot_usage/$name"
+      else if (cls.cls.attributes.contains(name)) s"/classes/$className/attributes/$name"
+      else s"/classes/$className"
+    at(pointer, schemaId)
+  }
+
+  /** Whether `own` allows more values, or requires fewer values, than `parent`.
+    *
+    * A slot has both `exact_cardinality` and `minimum_cardinality` or `maximum_cardinality` when a
+    * class sets one and inherits the other. The JSON Schema, SHACL and Pydantic generators read the
+    * minimum and maximum first, and the OWL generator reads `exact_cardinality` first, so the
+    * caller checks both orders.
+    *
+    * @param exactFirst
+    *   Whether to read `exact_cardinality` before the minimum and maximum
+    */
+  private def isWider(own: SlotDefinition, parent: SlotDefinition, exactFirst: Boolean): Boolean =
+    minValues(own, exactFirst) < minValues(parent, exactFirst) ||
+      maxValues(own, exactFirst) > maxValues(parent, exactFirst)
+
   /** The least number of values that the slot allows. */
-  private def minValues(slot: SlotDefinition): Int = {
+  private def minValues(slot: SlotDefinition, exactFirst: Boolean): Int = {
     val min = if (slot.multivalued) {
-      slot.minimumCardinality.orElseFast(slot.exactCardinality).getOrElseFast(0)
+      val limit =
+        if (exactFirst) slot.exactCardinality.orElseFast(slot.minimumCardinality)
+        else slot.minimumCardinality.orElseFast(slot.exactCardinality)
+      limit.getOrElseFast(0)
     } else 0
     if (slot.required) Math.max(min, 1) else min
   }
 
   /** The greatest number of values that the slot allows, or `Int.MaxValue` for no limit. */
-  private def maxValues(slot: SlotDefinition): Int =
+  private def maxValues(slot: SlotDefinition, exactFirst: Boolean): Int =
     if (slot.multivalued) {
-      slot.maximumCardinality.orElseFast(slot.exactCardinality).getOrElseFast(Int.MaxValue)
+      val limit =
+        if (exactFirst) slot.exactCardinality.orElseFast(slot.maximumCardinality)
+        else slot.maximumCardinality.orElseFast(slot.exactCardinality)
+      limit.getOrElseFast(Int.MaxValue)
     } else 1
 
   /** The number of values that the slot allows, as `min..max`, with `*` for no limit. */
-  private def cardinality(slot: SlotDefinition): String = {
-    val max = maxValues(slot)
-    s"${minValues(slot)}..${if (max == Int.MaxValue) "*" else max.toString}"
+  private def cardinality(slot: SlotDefinition, exactFirst: Boolean): String = {
+    val max = maxValues(slot, exactFirst)
+    s"${minValues(slot, exactFirst)}..${if (max == Int.MaxValue) "*" else max.toString}"
   }
 
   private def rangeNames(slot: SlotView): String =
