@@ -423,6 +423,22 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean =
     attributeNames.contains(slotRef.value)
 
+  /** A slot of this class as its definition gives it, before the `slot_usage` of any class: the
+    * top-level slot, or the attribute in the most distant ancestor that declares it.
+    *
+    * @param name
+    *   Name of the slot
+    * @return
+    *   None if the class doesn't have the slot
+    */
+  def definedSlot(name: String): Option[SlotView] =
+    if (!derivedAttributes.contains(name)) None
+    else if (attributeNames.contains(name)) {
+      var declaring: ClassView = null
+      ancestorsWithSelf.foreach(a => if (a.cls.attributes.contains(name)) declaring = a)
+      new Some(ClassView.derived(declaring.cls.attributes(name), name, None, declaring))
+    } else sv.resolve(Reference[SlotView](name)).mapFast(_.unchangedDerived)
+
   /** The names of the `attributes` of this class and its ancestors.
     *
     * A class without attributes of its own and with at most one parent shares the set of that

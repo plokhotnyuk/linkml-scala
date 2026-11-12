@@ -10,6 +10,7 @@ import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
 import java.lang
+import scala.collection.mutable
 
 final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   import ScalaGenerator.*
@@ -99,22 +100,21 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     *   Tuples of form (file name, file content) for all LinkML classes
     */
   private def generateClasses(options: ScalaGeneratorOptions): Iterable[(String, String)] = {
-    // A field overrides the `def` of a parent only if its type conforms to the `def`'s. So a
-    // parent declares the `def` only if the fields of all its descendants do.
-    val sharedFields =
-      new SharedSlots((ancestor, descendant) => overrides(ancestor, descendant, options))
     sv.classes.values.flatMap { classView =>
       // Let's treat linkml:Any as a built-in: no type aliasing
       if classView.isAny then None
       else {
         val cls = classView.cls
         val collectionForm = CollectionForm.of(classView)
+        // The interface declares the slots that the class lists or changes itself
         val interfaceFields = Set.newBuilder[String]
         val scalaFields = for attribute <- classView.sortedAttributeViews yield {
           val field = makeScalaField(attribute, collectionForm, classView, options)
-          if (sharedFields.describes(classView, attribute.slotView.name)) {
-            interfaceFields.addOne(field.name)
-          }
+          val name = attribute.slotView.name
+          if (
+            cls.slotUsage.contains(name) || cls.attributes.contains(name) ||
+            cls.slots.exists(_.value == name)
+          ) interfaceFields.addOne(field.name)
           field
         }
         val caseClassOnly = isCaseClassOnly(classView, options)
@@ -142,32 +142,6 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         )
       }
     }
-  }
-
-  /** Whether the field of a descendant can override the `def` of an ancestor. It can when it has:
-    *   - the same Scala type, or
-    *   - the same wrapper (`Option`, `Seq` or `Map`) around a subtype.
-    *
-    * A subtype is a type derived from the ancestor's type (such as `ncname` for `string`), or a
-    * subclass when the ancestor's field uses the class's trait, not its case class. `validate`
-    * reports a range that is not derived from the ancestor's as an error, so this doesn't check it.
-    */
-  private def overrides(
-      ancestor: AttributeView,
-      descendant: AttributeView,
-      options: ScalaGeneratorOptions,
-  ): Boolean = {
-    val ancestorType = makeTypedDefault(ancestor, options).typeName
-    val descendantType = makeTypedDefault(descendant, options).typeName
-    ancestorType == descendantType ||
-    InlineType(ancestor.slotView) == InlineType(descendant.slotView) && (ancestor match {
-      case _: TypeAttributeView => descendant.isInstanceOf[TypeAttributeView]
-      case _: ClassReferenceAttributeView => descendant.isInstanceOf[ClassReferenceAttributeView]
-      case c: ClassInlineAttributeView =>
-        descendant.isInstanceOf[ClassInlineAttributeView] &&
-        baseRange(ancestor, options).scalaType == className(c.classView)
-      case _ => false
-    })
   }
 
   /** Generate Scala counterparts of regular (static) LinkML enums.
@@ -392,8 +366,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case ClassInlineAttributeView(_, _, classView, _) =>
         // Abstract classes and mixins have no case class, so the slot uses the interface type.
         // A type designator union also uses the interface type, so that the slot can hold any
-        // implementation. A concrete class uses its case class. A subclass that narrows the range
-        // gives the field another type, so the parent does not declare the field.
+        // implementation. A concrete class uses its case class. The `def` of the field uses the
+        // interface type (see `interfaceRange`).
         (
           if (classView.isConcrete && !classView.isTypeDesignatorUnion) implName(classView, options)
           else className(classView),
@@ -433,32 +407,41 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       options: ScalaGeneratorOptions,
   ): TypedDefault = {
     val slot = attribute.slotView
+    val shape = shapeOf(attribute)
     val (scalaType, defaultValue) = baseRange(attribute, options)
+    val defType = interfaceRange(attribute, scalaType)
     // Defaults coming from 'ifabsent' are meaningful and must survive serialization, unlike the
     // implicit "empty" defaults (None / Seq() / Map()) that codecs are free to omit.
     val ifAbsentAnnotation =
       if defaultValue.isDefined then Seq("@serializeDefault") else Seq()
-    InlineType(slot) match {
+    // A slot that a `slot_usage` makes required keeps the parent's `Option`, `Seq` or `Map`
+    val requiredAnnotation =
+      if slot.slot.required && !shape.slot.required then Seq("@required") else Seq()
+    InlineType(shape) match {
       case InlineType.plain =>
-        TypedDefault(scalaType, defaultValue, annotations = ifAbsentAnnotation)
+        TypedDefault(scalaType, defType, defaultValue, annotations = ifAbsentAnnotation)
       case InlineType.optional if isPlainBoolean(slot, scalaType) =>
         TypedDefault(
           scalaType,
+          defType,
           default = Some(defaultValue.getOrElseFast("false")),
-          annotations = ifAbsentAnnotation,
+          annotations = ifAbsentAnnotation.concat(requiredAnnotation),
           combineFunc = combineBoolean,
         )
       case InlineType.optional =>
         TypedDefault(
           s"Option[$scalaType]",
+          s"Option[$defType]",
           default = Some(defaultValue.foldFast("None")(v => s"Some($v)")),
-          annotations = ifAbsentAnnotation,
+          annotations = ifAbsentAnnotation.concat(requiredAnnotation),
           combineFunc = combineOption(combineFallback),
         )
       case InlineType.list =>
         TypedDefault(
           s"Seq[$scalaType]",
-          default = if slot.slot.required then None else Some("Seq()"),
+          s"Seq[$defType]",
+          default = if shape.slot.required then None else Some("Seq()"),
+          annotations = requiredAnnotation,
           combineFunc = combineSeq,
         )
       case InlineType.dict(style) =>
@@ -468,12 +451,74 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         }
         TypedDefault(
           s"Map[String, $scalaType]",
-          default = if slot.slot.required then None else Some("Map()"),
-          annotations = Seq(annotation),
+          s"Map[String, $defType]",
+          default = if shape.slot.required then None else Some("Map()"),
+          annotations = annotation +: requiredAnnotation,
           combineFunc = combineMap,
         )
     }
   }
+
+  /** The version of a slot that sets the wrapper of its field: `Option`, `Seq`, `Map` or none.
+    *
+    * A field has to override the `def`s of its parents. So all classes linked by inheritance that
+    * have the slot use the same wrapper, from the topmost classes among them. A `slot_usage` below
+    * them that makes the slot required or single-valued doesn't change the wrapper, as for other
+    * changes of the number of values. When the topmost classes give different wrappers, such as two
+    * mixins of a class, they all use the slot as its definition gives it, before any `slot_usage`.
+    */
+  private def shapeOf(attribute: AttributeView): SlotView = {
+    val name = attribute.slotView.name
+    val byClass = slotShapes.getOrElseUpdate(name, shapesOf(name))
+    byClass.getOrElse(attribute.definingClassView.name, attribute.slotView)
+  }
+
+  /** The results of [[shapesOf]], by slot name. */
+  private val slotShapes = mutable.HashMap.empty[String, collection.Map[String, SlotView]]
+
+  /** The version of a slot that sets the wrapper of its field in each class that has the slot, by
+    * class name. See [[shapeOf]].
+    */
+  private def shapesOf(name: String): collection.Map[String, SlotView] = {
+    val result = mutable.HashMap.empty[String, SlotView]
+    sv.classes.values.foreach { start =>
+      if (!result.contains(start.name) && start.derivedAttributes.contains(name)) {
+        // The classes with the slot that inheritance links to `start`
+        val group = mutable.ArrayBuffer(start)
+        val seen = mutable.HashSet(start.name)
+        def visit(cls: ClassView): Unit =
+          if (cls.derivedAttributes.contains(name) && seen.add(cls.name)) group.addOne(cls)
+        var i = 0
+        while (i < group.size) {
+          val cls = group(i)
+          cls.parents.foreach(visit)
+          cls.children.foreach(visit)
+          i += 1
+        }
+        var shape: SlotView = null
+        var same = true
+        group.foreach { cls =>
+          if (!cls.parents.exists(_.derivedAttributes.contains(name))) {
+            val own = cls.derivedAttributes(name)
+            if (shape eq null) shape = own
+            else if (InlineType(shape) != InlineType(own)) same = false
+          }
+        }
+        if (!same) shape = start.definedSlot(name).getOrElseFast(shape)
+        group.foreach(cls => result.update(cls.name, shape))
+      }
+    }
+    result
+  }
+
+  /** The Scala type of the `def` of a field, without its wrapper. An inlined class uses its
+    * interface, not its case class, so that a subclass can narrow the range to a subclass.
+    */
+  private def interfaceRange(attribute: AttributeView, scalaType: String): String =
+    attribute match {
+      case c: ClassInlineAttributeView => className(c.classView)
+      case _ => scalaType
+    }
 
   /** Rewrite the [[TypedDefault]] of a type designator slot (`designates_type: true`). Its value is
     * fixed to the identifier of the containing class.
@@ -505,7 +550,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case _ => None
     }
     literal.foldFast(fromRange) { value =>
-      InlineType(attribute.slotView) match {
+      InlineType(shapeOf(attribute)) match {
         case InlineType.plain =>
           fromRange.copy(default = Some(value), annotations = Seq("@serializeDefault"))
         case InlineType.optional =>
@@ -555,8 +600,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def isSingleValuedString(attribute: AttributeView): Boolean =
     attribute match {
-      case TypeAttributeView(slotView, _, typeView) =>
-        (typeView.runtimeType eq StringType) && (InlineType(slotView) match {
+      case TypeAttributeView(_, _, typeView) =>
+        (typeView.runtimeType eq StringType) && (InlineType(shapeOf(attribute)) match {
           case InlineType.plain | InlineType.optional => true
           case _ => false
         })
@@ -577,9 +622,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * defaulting to `false`. Mirrors [[makeTypedDefault]].
     */
   private def isOptionField(attribute: AttributeView, options: ScalaGeneratorOptions): Boolean = {
-    val slot = attribute.slotView
-    InlineType(slot) == InlineType.optional &&
-    !isPlainBoolean(slot, baseRange(attribute, options).scalaType)
+    InlineType(shapeOf(attribute)) == InlineType.optional &&
+    !isPlainBoolean(attribute.slotView, baseRange(attribute, options).scalaType)
   }
 
   /** Whether an optional slot of the given Scala type is emitted as a plain `Boolean` defaulting to
@@ -714,6 +758,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     ScalaField(
       name,
       typedDefault.typeName,
+      typedDefault.interfaceTypeName,
       typedDefault.default,
       Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
       remapMetamodelCombineFunctions(
@@ -747,7 +792,7 @@ object ScalaGenerator {
     *   abstract class) must be first in the list.
     * @param interfaceFields
     *   Names of the [[fields]] that the interface declares: those that the class lists or changes
-    *   itself, or that a parent leaves out, and that the fields of all descendants can override.
+    *   itself.
     * @param skipImpl
     *   Whether to skip the case class implementation for instantiable classes.
     * @param caseClassOnly
@@ -1095,6 +1140,9 @@ object ScalaGenerator {
     *   Name of the field, in camelCase.
     * @param typeName
     *   Name of the Scala type.
+    * @param interfaceTypeName
+    *   Name of the Scala type of the `def` in the interface. It differs from [[typeName]] for an
+    *   inlined class, which the `def` gives as its interface.
     * @param default
     *   The default value for the case class field, if applicable.
     * @param annotations
@@ -1109,6 +1157,7 @@ object ScalaGenerator {
   case class ScalaField(
       name: String,
       typeName: String,
+      interfaceTypeName: String,
       default: Option[String],
       annotations: Seq[String],
       combineFunc: CombineFunction,
@@ -1125,7 +1174,7 @@ object ScalaGenerator {
 
     /** Generate code for an interface getter for the field with documentation */
     def generateInterfaceField: String =
-      s"${doc.print}def $name: $typeName"
+      s"${doc.print}def $name: $interfaceTypeName"
 
     /** Generate code for the combined value of the field. */
     def generateCombinedValue: String = combineFunc.generate(name, "this", "other")
@@ -1232,6 +1281,8 @@ object ScalaGenerator {
     *
     * @param typeName
     *   Name of the Scala type to use.
+    * @param interfaceTypeName
+    *   Name of the Scala type of the `def` in the interface.
     * @param default
     *   The default value to provide for the field, or None if the field should be required. Must be
     *   compatible with [[typeName]]
@@ -1243,6 +1294,7 @@ object ScalaGenerator {
     */
   case class TypedDefault(
       typeName: String,
+      interfaceTypeName: String,
       default: Option[String] = None,
       annotations: Seq[String] = Seq(),
       combineFunc: CombineFunction = CombineFunction.combineFallback,

@@ -146,7 +146,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def enumRange: Option[EnumExpressionImpl]
+  def enumRange: Option[EnumExpression]
 
   /** The value of the slot must equal the value of the evaluated expression
     *
